@@ -14,6 +14,10 @@ public:
   Application();
   virtual ~Application();
 
+  static std::unique_ptr<Application> Create() {
+    return std::make_unique<Application>();
+  }
+
   void Run();
 
   static Application &GetInstance() { return *s_Instance; }
