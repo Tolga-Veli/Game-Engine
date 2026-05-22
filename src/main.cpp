@@ -1,6 +1,6 @@
 #include "Core/Application.hpp"
 
 int main() {
-  auto app = Jupiter::Core::Application::Create();
+  auto app = Jupiter::Application::Create();
   app->Run();
 }

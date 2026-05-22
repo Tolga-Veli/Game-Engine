@@ -24,6 +24,9 @@ add_library(glad "${LIB_DIR}/glad/src/gl.c")
 target_include_directories(glad PUBLIC "${LIB_DIR}/glad/include")
 target_link_libraries(${PROJECT_NAME} PRIVATE glad)
 
+# STB_IMAGE
+target_include_directories(${PROJECT_NAME} PRIVATE "${LIB_DIR}/stb")
+
 # GLM
 target_include_directories(${PROJECT_NAME} PRIVATE "${LIB_DIR}/glm")
 

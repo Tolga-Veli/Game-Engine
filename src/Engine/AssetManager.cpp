@@ -1,4 +1,5 @@
 #include "AssetManager.hpp"
+#include "Renderer/Backend/IShader.hpp"
 
 namespace Jupiter::Assets {
 
@@ -26,8 +27,7 @@ void AssetManager::Shutdown() {
   J_INFO("AssetManager: Resources cleared.");
 }
 
-std::shared_ptr<Renderer::Texture2D>
-AssetManager::GetTexture2D(const std::string name) {
+Ref<Renderer::ITexture> AssetManager::GetTexture(const std::string name) {
   if (!s_Instance) {
     J_ERROR("AssetManager isn't initialized");
     return nullptr;
@@ -36,13 +36,12 @@ AssetManager::GetTexture2D(const std::string name) {
   auto &textures = s_Instance->m_Textures;
   if (textures.find(name) == textures.end()) {
     fs::path path = s_Instance->m_AssetsDir / "Textures" / name;
-    textures[name] = Texture2DLoader::LoadFromFile(path);
+    // TODO: textures[name] = m_RenderDevice->CreateTexture({});
   }
   return textures[name];
 }
 
-std::shared_ptr<Renderer::Shader>
-AssetManager::GetShader(const std::string name) {
+Ref<Renderer::IShader> AssetManager::GetShader(const std::string name) {
   if (!s_Instance) {
     J_ERROR("AssetManager isn't initialized");
     return nullptr;
@@ -51,12 +50,12 @@ AssetManager::GetShader(const std::string name) {
   auto &shaders = s_Instance->m_Shaders;
   if (shaders.find(name) == shaders.end()) {
     fs::path path = s_Instance->m_AssetsDir / "Shaders" / (name + ".glsl");
-    shaders[name] = ShaderLoader::LoadFromFile(path);
+    shaders[name] = LoadShaderFromFile(path);
   }
   return shaders[name];
 }
 
-std::shared_ptr<Core::Audio> AssetManager::GetAudio(const std::string name) {
+Ref<Core::Audio> AssetManager::GetAudio(const std::string name) {
   if (!s_Instance) {
     J_ERROR("AssetManager isn't initialized");
     return nullptr;
@@ -65,8 +64,44 @@ std::shared_ptr<Core::Audio> AssetManager::GetAudio(const std::string name) {
   auto &audios = s_Instance->m_Audios;
   if (audios.find(name) == audios.end()) {
     fs::path path = s_Instance->m_AssetsDir / "Audio" / name;
-    audios[name] = AudioLoader::LoadFromFile(path);
+    audios[name] = LoadAudioFromFile(path);
   }
   return audios[name];
+}
+
+Ref<Renderer::IShader> AssetManager::LoadShaderFromFile(const fs::path &path) {
+  std::array<std::string, EnumToSize(Renderer::ShaderType::Count)> shaderSrcs;
+
+  static auto StringToType =
+      [](const std::string &type) -> Renderer::ShaderType {
+    if (type == "vertex")
+      return Renderer::ShaderType::Vertex;
+    else if (type == "fragment")
+      return Renderer::ShaderType::Fragment;
+    else if (type == "geometry")
+      return Renderer::ShaderType::Geometry;
+    else if (type == "compute")
+      return Renderer::ShaderType::Compute;
+    return Renderer::ShaderType::None;
+  };
+
+  std::string source = Utils::ReadFile(path);
+
+  std::string_view token = "#type";
+  size_t pos = source.find(token, 0);
+  while (pos != std::string::npos) {
+    size_t eol = source.find_first_of("\r\n", pos);
+    size_t beg = pos + token.length() + 1;
+    std::string type = source.substr(beg, eol - beg);
+
+    size_t nextLinePos = source.find_first_not_of("\r\n", eol);
+    pos = source.find(token, nextLinePos);
+
+    shaderSrcs[static_cast<u32>(StringToType(type))] =
+        (pos == std::string::npos)
+            ? source.substr(nextLinePos)
+            : source.substr(nextLinePos, pos - nextLinePos);
+  }
+  return Renderer::IShader::Create(shaderSrcs);
 }
 } // namespace Jupiter::Assets

@@ -1,38 +1,43 @@
 #pragma once
 
-#include <memory>
+#include "Core/Utils.hpp"
 #include "Window.hpp"
 #include "Engine/AssetManager.hpp"
 
-#include "Renderer/VertexArray.hpp"
-#include "Renderer/VertexBuffer.hpp"
+#include "Renderer/Renderer.hpp"
 
-namespace Jupiter::Core {
+#include <memory>
+#include <vector>
+
+namespace Jupiter {
 
 class Application {
 public:
   Application();
-  virtual ~Application();
+  ~Application();
 
-  static std::unique_ptr<Application> Create() {
-    return std::make_unique<Application>();
-  }
+  void Init();
+  void Shutdown();
+
+  static Scope<Application> Create() { return std::make_unique<Application>(); }
 
   void Run();
+  void OnRender();
+  void OnWindowResize(uint32_t width, uint32_t height);
 
   static Application &GetInstance() { return *s_Instance; }
 
 private:
+  Ref<Renderer::Mesh> m_Mesh;
+  Ref<Renderer::Material> m_Material;
+  glm::vec3 m_ObjectPosition = {0.0f, 0.0f, 0.0f};
+  glm::mat4 m_ViewProjection;
+
   bool m_Running;
   static Application *s_Instance;
 
-  std::unique_ptr<Window> m_Window;
+  Scope<Core::Window> m_Window;
   Assets::AssetManager m_AssetManager;
-
-  std::unique_ptr<Renderer::VertexArray> m_VertexArray;
-  std::unique_ptr<Renderer::VertexBuffer> m_VertexBuffer;
-  std::unique_ptr<Renderer::IndexBuffer> m_IndexBuffer;
-  std::shared_ptr<Renderer::Shader> m_ShaderProgram;
 
   // 8 Vertices (Position, Color)
   std::vector<float> cubeVertices = {
@@ -55,5 +60,4 @@ private:
       3, 2, 6, 6, 7, 3  // Top
   };
 };
-
-}; // namespace Jupiter::Core
+}; // namespace Jupiter
