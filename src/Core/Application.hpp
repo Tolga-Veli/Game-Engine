@@ -1,13 +1,21 @@
 #pragma once
 
-#include "Core/Utils.hpp"
+#include "Utils.hpp"
 #include "Window.hpp"
-#include "Engine/AssetManager.hpp"
 
-#include "Renderer/Renderer.hpp"
+#include "Rendering/Backend/IGraphicsContext.hpp"
+#include "Rendering/TextRenderer.hpp"
+#include "Rendering/RenderThread.hpp"
 
+#include "Engine/Simulation.hpp"
+#include "Engine/PlanetRenderer.hpp"
+
+#include "Events/WindowEvent.hpp"
+#include "Events/KeyboardEvent.hpp"
+
+#include <chrono>
+#include <glm/glm.hpp>
 #include <memory>
-#include <vector>
 
 namespace Jupiter {
 
@@ -22,42 +30,36 @@ public:
   static Scope<Application> Create() { return std::make_unique<Application>(); }
 
   void Run();
-  void OnRender();
-  void OnWindowResize(uint32_t width, uint32_t height);
+  void OnUpdate();
+  void OnRender(float fps);
 
-  static Application &GetInstance() { return *s_Instance; }
+  void OnEvent(Core::Event &event);
 
 private:
-  Ref<Renderer::Mesh> m_Mesh;
-  Ref<Renderer::Material> m_Material;
-  glm::vec3 m_ObjectPosition = {0.0f, 0.0f, 0.0f};
-  glm::mat4 m_ViewProjection;
+  static constexpr u32 k_BodyCount = 500;
+  static constexpr std::chrono::milliseconds k_MinRefreshInterval{
+      16}; // ~60Hz cap
 
-  bool m_Running;
-  static Application *s_Instance;
+  std::chrono::steady_clock::time_point m_LastRefreshRedraw =
+      std::chrono::steady_clock::now();
 
   Scope<Core::Window> m_Window;
-  Assets::AssetManager m_AssetManager;
+  Scope<Rendering::IGraphicsContext> m_GraphicsContext;
 
-  // 8 Vertices (Position, Color)
-  std::vector<float> cubeVertices = {
-      -0.5f, -0.5f, 0.5f,  1.0f, 0.0f, 0.0f, // 0: Front-bottom-left
-      0.5f,  -0.5f, 0.5f,  0.0f, 1.0f, 0.0f, // 1: Front-bottom-right
-      0.5f,  0.5f,  0.5f,  0.0f, 0.0f, 1.0f, // 2: Front-top-right
-      -0.5f, 0.5f,  0.5f,  1.0f, 1.0f, 0.0f, // 3: Front-top-left
-      -0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 1.0f, // 4: Back-bottom-left
-      0.5f,  -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, // 5: Back-bottom-right
-      0.5f,  0.5f,  -0.5f, 1.0f, 1.0f, 1.0f, // 6: Back-top-right
-      -0.5f, 0.5f,  -0.5f, 0.0f, 0.0f, 0.0f  // 7: Back-top-left
-  };
+  Rendering::TextRenderer m_TextRenderer;
+  Assets::AssetHandle<Rendering::Font> m_FontHandle;
 
-  std::vector<u32> cubeIndices = {
-      0, 1, 2, 2, 3, 0, // Front
-      1, 5, 6, 6, 2, 1, // Right
-      7, 6, 5, 5, 4, 7, // Back
-      4, 0, 3, 3, 7, 4, // Left
-      4, 5, 1, 1, 0, 4, // Bottom
-      3, 2, 6, 6, 7, 3  // Top
-  };
+  Engine::PlanetSimulation m_Simulation;
+  Rendering::PlanetRenderer m_PlanetRenderer;
+
+  std::span<const glm::vec2> m_Positions, m_Velocities;
+  std::span<const float> m_Radii;
+
+  bool m_Running;
+
+  bool OnWindowClose(Core::WindowCloseEvent &e);
+  bool OnWindowResize(Core::WindowResizeEvent &e);
+  bool OnWindowFramebufferResize(Core::WindowFramebufferResizeEvent &e);
+  bool OnKeyPressed(Core::KeyPressedEvent &e);
 };
 }; // namespace Jupiter

@@ -1,61 +1,123 @@
 #pragma once
 
-#include <cstdint>
-#include <iostream>
+#include "Utils.hpp"
+
+#include <cstdio>
 #include <format>
+#include <mutex>
+#include <source_location>
 #include <string_view>
+#include <utility>
+#include <format>
 
-namespace Jupiter {
-namespace Core {
+namespace Jupiter::Core {
+enum class LogLevel : u8 { Trace = 0, Debug, Info, Warn, Error, Fatal };
 
-enum class LogLevel : uint16_t { Trace = 0, Info, Warning, Error, Fatal, None };
+namespace detail {
+[[nodiscard]] constexpr std::string_view to_string(LogLevel level) noexcept {
+  using enum LogLevel;
+  switch (level) {
+  case Trace:
+    return "TRACE";
+  case Debug:
+    return "DEBUG";
+  case Info:
+    return "INFO";
+  case Warn:
+    return "WARN";
+  case Error:
+    return "ERROR";
+  case Fatal:
+  default:
+    return "Unknown";
+  }
+}
+
+// ANSI escape codes for terminal output. Harmless if the target stream
+// isn't a color-capable terminal; Logger::SetColorEnabled can disable
+// emitting these entirely (e.g. redirecting to a file).
+//
+// Note: these are terminal codes, not usable directly.
+[[nodiscard]] constexpr std::string_view
+to_ansi_color(LogLevel level) noexcept {
+  using enum LogLevel;
+  switch (level) {
+  case Trace:
+    return "\x1b[90m";
+  case Debug:
+    return "\x1b[36m";
+  case Info:
+    return "\x1b[32m";
+  case Warn:
+    return "\x1b[33m";
+  case Error:
+    return "\x1b[31m";
+  case Fatal:
+    return "\x1b[41;97m";
+  default:
+    return "";
+  }
+}
+
+inline constexpr std::string_view k_ColorReset = "\x1b[0m";
 
 class Logger {
 public:
-  static void SetLevel(LogLevel level) { s_currentLevel = level; }
-  static LogLevel GetLevel() { return s_currentLevel; }
+  static Logger &Instance() noexcept {
+    static Logger instance;
+    return instance;
+  }
+
+  void SetMinLevel(LogLevel level) noexcept { m_minLevel = level; }
+  [[nodiscard]] LogLevel GetMinLevel() const noexcept { return m_minLevel; }
+
+  void SetColorEnabled(bool enabled) noexcept { m_colorEnabled = enabled; }
 
   template <typename... Args>
-  static void Log(LogLevel level, std::string_view prefix,
-                  std::string_view color, std::format_string<Args...> fmt,
-                  Args &&...args) {
-    if (level < s_currentLevel)
+  void Log(LogLevel level, std::source_location loc,
+           std::format_string<Args...> fmt, Args &&...args) {
+    if (level < m_minLevel)
       return;
 
     std::string message = std::format(fmt, std::forward<Args>(args)...);
-    std::cout << color << "[" << prefix << "] " << message << "\033[0m"
-              << std::endl;
+
+    std::scoped_lock lock(m_mutex);
+    FILE *stream = (level >= LogLevel::Warn) ? stderr : stdout;
+
+    if (m_colorEnabled) {
+      std::fprintf(stream, "%s[%s]%s %s (%s:%d)\n", to_ansi_color(level).data(),
+                   to_string(level).data(), k_ColorReset.data(),
+                   message.c_str(), loc.file_name(),
+                   static_cast<int>(loc.line()));
+    } else {
+      std::fprintf(stream, "[%s] %s (%s:%d)\n", to_string(level).data(),
+                   message.c_str(), loc.file_name(),
+                   static_cast<int>(loc.line()));
+    }
+    std::fflush(stream);
   }
 
 private:
-  inline static LogLevel s_currentLevel = LogLevel::Trace;
+  Logger() = default;
+
+  LogLevel m_minLevel = LogLevel::Trace;
+  bool m_colorEnabled = true;
+  std::mutex m_mutex;
 };
 
-} // namespace Core
-} // namespace Jupiter
+} // namespace detail
+} // namespace Jupiter::Core
 
-#define J_COL_GRAY "\033[90m"
-#define J_COL_GREEN "\033[32m"
-#define J_COL_YELLOW "\033[33m"
-#define J_COL_RED "\033[31m"
-#define J_COL_FATAL "\033[41m\033[37m"
+// std::source_location::current() is captured at the macro call site, so
+// every log line points at the code that actually logged it, not at some
+// wrapper function three layers down.
+#define LOG(level, ...)                                                        \
+  ::Jupiter::Core::detail::Logger::Instance().Log(                             \
+      level, std::source_location::current(), __VA_ARGS__)
 
-#ifdef J_DEBUG
-#define J_INFO(...)                                                            \
-  ::Jupiter::Core::Logger::Log(::Jupiter::Core::LogLevel::Info, "INFO",        \
-                               J_COL_GREEN, __VA_ARGS__)
-#define J_WARN(...)                                                            \
-  ::Jupiter::Core::Logger::Log(::Jupiter::Core::LogLevel::Warning, "WARN",     \
-                               J_COL_YELLOW, __VA_ARGS__)
-#define J_ERROR(...)                                                           \
-  ::Jupiter::Core::Logger::Log(::Jupiter::Core::LogLevel::Error, "ERROR",      \
-                               J_COL_RED, __VA_ARGS__)
-#define J_FATAL(...)                                                           \
-  ::Jupiter::Core::Logger::Log(::Jupiter::Core::LogLevel::Fatal, "FATAL",      \
-                               J_COL_FATAL, __VA_ARGS__)
-#else
-#define J_INFO(...)
-#define J_WARN(...)
-#define J_ERROR(...)
-#define J_FATAL(...)
-#endif
+#define LOG_TRACE(...) LOG(::Jupiter::Core::LogLevel::Trace, __VA_ARGS__)
+#define LOG_DEBUG(...) LOG(::Jupiter::Core::LogLevel::Debug, __VA_ARGS__)
+#define LOG_INFO(...) LOG(::Jupiter::Core::LogLevel::Info, __VA_ARGS__)
+#define LOG_WARN(...) LOG(::Jupiter::Core::LogLevel::Warn, __VA_ARGS__)
+#define LOG_ERROR(...) LOG(::Jupiter::Core::LogLevel::Error, __VA_ARGS__)
+#define LOG_FATAL(...) LOG(::Jupiter::Core::LogLevel::Fatal, __VA_ARGS__)

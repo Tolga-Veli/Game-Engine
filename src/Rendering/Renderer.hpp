@@ -1,0 +1,39 @@
+#pragma once
+
+#include "Rendering/Backend/RenderUtils.hpp"
+#include "Rendering/Backend/IRenderer.hpp"
+#include "Rendering/RenderQueue.hpp"
+
+namespace Jupiter::Rendering {
+
+class Renderer {
+public:
+  // ===================================
+  // Game thread API.
+  // ===================================
+  static void BeginFrame(const SceneData &sceneData);
+  static void Submit(const RenderCommand &command);
+  static void EndFrame(); // Blocks until the render thread finishes consuming
+                          // the frame - bounds the
+                          // game thread to being at most one frame ahead.
+
+  // ===================================
+  // Render thread API.
+  // ===================================
+  static void Init();
+  static bool RenderNextFrame();
+  static void Shutdown();
+
+  // ===================================
+  // Thread-independent API.
+  // ===================================
+  inline static GraphicsAPI GetAPI() { return s_RendererAPI; }
+  static void RequestStop();
+
+private:
+  static GraphicsAPI s_RendererAPI;
+  static Scope<IRenderer> s_RendererImplementation;
+  static RenderQueue s_RenderQueue;
+};
+
+} // namespace Jupiter::Rendering

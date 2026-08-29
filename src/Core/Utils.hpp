@@ -1,12 +1,8 @@
 #pragma once
 
-#include <fstream>
-#include <string>
-#include <filesystem>
 #include <cstdint>
 #include <memory>
-
-#include "Logging.hpp"
+#include <glm/glm.hpp>
 
 namespace Jupiter {
 template <typename T> using Ref = std::shared_ptr<T>;
@@ -20,6 +16,9 @@ using u64 = std::uint64_t;
 using i32 = std::int32_t;
 using i64 = std::int64_t;
 
+using f32 = float;
+using f64 = double;
+
 template <typename T>
 constexpr size_t EnumToSize(T value)
   requires(std::is_enum_v<T>)
@@ -27,29 +26,50 @@ constexpr size_t EnumToSize(T value)
   return static_cast<u32>(value);
 }
 
-namespace Utils {
-inline std::string ReadFile(const std::filesystem::path &path) {
-  std::ifstream in(path, std::ios::in | std::ios::binary | std::ios::ate);
+namespace Core::Colors {
+// RGB
+inline constexpr glm::vec3 Black = {0.0f, 0.0f, 0.0f};
+inline constexpr glm::vec3 White = {1.0f, 1.0f, 1.0f};
 
-  if (!in) {
-    J_ERROR("Couldn't open file: {}", path.string());
-    return "";
-  }
+inline constexpr glm::vec3 Red = {1.0f, 0.0f, 0.0f};
+inline constexpr glm::vec3 Green = {0.0f, 1.0f, 0.0f};
+inline constexpr glm::vec3 Blue = {0.0f, 0.0f, 1.0f};
 
-  auto size = in.tellg();
-  if (size <= 0)
-    return "";
+inline constexpr glm::vec3 Yellow = {1.0f, 1.0f, 0.0f};
+inline constexpr glm::vec3 Cyan = {0.0f, 1.0f, 1.0f};
+inline constexpr glm::vec3 Magenta = {1.0f, 0.0f, 1.0f};
 
-  std::string result;
-  result.resize(size);
+inline constexpr glm::vec3 Gray = {0.5f, 0.5f, 0.5f};
+inline constexpr glm::vec3 DarkGray = {0.25f, 0.25f, 0.25f};
+inline constexpr glm::vec3 LightGray = {0.75f, 0.75f, 0.75f};
 
-  in.seekg(0, std::ios::beg);
-  if (!in.read(result.data(), size)) {
-    J_ERROR("Couldn't load file: {}", path.string());
-    return "";
-  }
+// RGBA
+namespace RGBA {
 
-  return result;
+inline constexpr glm::vec4 Black = {0.0f, 0.0f, 0.0f, 1.0f};
+inline constexpr glm::vec4 White = {1.0f, 1.0f, 1.0f, 1.0f};
+
+inline constexpr glm::vec4 Red = {1.0f, 0.0f, 0.0f, 1.0f};
+inline constexpr glm::vec4 Green = {0.0f, 1.0f, 0.0f, 1.0f};
+inline constexpr glm::vec4 Blue = {0.0f, 0.0f, 1.0f, 1.0f};
+
+inline constexpr glm::vec4 Yellow = {1.0f, 1.0f, 0.0f, 1.0f};
+inline constexpr glm::vec4 Cyan = {0.0f, 1.0f, 1.0f, 1.0f};
+inline constexpr glm::vec4 Magenta = {1.0f, 0.0f, 1.0f, 1.0f};
+
+inline constexpr glm::vec4 Gray = {0.5f, 0.5f, 0.5f, 1.0f};
+inline constexpr glm::vec4 DarkGray = {0.25f, 0.25f, 0.25f, 1.0f};
+inline constexpr glm::vec4 LightGray = {0.75f, 0.75f, 0.75f, 1.0f};
+
+} // namespace RGBA
+
+// convert the traditional [0,255] colours to [0,1]
+constexpr glm::vec3 to_RGB(u8 r, u8 g, u8 b) {
+  return {r / 255.0f, g / 255.0f, b / 255.0f};
 }
-} // namespace Utils
+
+constexpr glm::vec4 to_RGBA(u8 r, u8 g, u8 b, u8 a = 255) {
+  return {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f};
+}
+} // namespace Core::Colors
 } // namespace Jupiter
