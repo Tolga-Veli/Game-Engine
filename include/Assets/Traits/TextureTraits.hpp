@@ -3,25 +3,26 @@
 #include "Core/Logging.hpp"
 
 #include "Assets/AssetTraits.hpp"
-#include "Rendering/Texture.hpp"
+#include "Rendering/Backend/ITexture.hpp"
+#include "Rendering/Texture2D.hpp"
 
+#include <cstddef>
 #include <stb_image.h>
 
 namespace Jupiter::Assets {
 
-template <> struct AssetTraits<Rendering::Texture> {
+template <> struct AssetTraits<Rendering::Texture2D> {
   static constexpr bool IsAsset = true;
 
-  using Asset = Rendering::Texture;
-  using Impl = Rendering::ITexture;
+  using Asset = Rendering::Texture2D;
+  using Impl = Rendering::RHI::ITexture;
   using LoadOptions = std::monostate;
 
   static constexpr AssetType type = AssetType::Texture;
 
   [[nodiscard]]
-  static Scope<Impl> Create(const void *pixels, i32 width, i32 height,
-                            i32 channels) {
-    return Impl::Create(pixels, width, height, channels);
+  static Scope<Impl> Create(const Rendering::RHI::TextureCreateSpec &spec) {
+    return Impl::Create(spec);
   }
 
   [[nodiscard]]
@@ -36,7 +37,23 @@ template <> struct AssetTraits<Rendering::Texture> {
       return nullptr;
     }
 
-    auto texture = Create(data, width, height, channels);
+    const std::size_t sz = static_cast<std::size_t>(width) * height * channels;
+    const auto format = Rendering::RHI::ToTextureFormat(channels);
+
+    if (format == Rendering::RHI::TextureFormat::None) {
+      LOG_ERROR("Texture format was None");
+      stbi_image_free(data);
+      return nullptr;
+    }
+
+    auto texture = Create(Rendering::RHI::TextureCreateSpec{
+        .data =
+            std::span<const std::byte>{
+                reinterpret_cast<const std::byte *>(data), sz},
+        .width = static_cast<u32>(width),
+        .height = static_cast<u32>(height),
+        .format = format});
+
     stbi_image_free(data);
     return texture;
   }

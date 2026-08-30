@@ -1,31 +1,44 @@
 #pragma once
 
 #include "Core/Assert.hpp"
-#include "Rendering/Backend/RenderUtils.hpp"
-#include "Rendering/Backend/IFramebuffer.hpp"
+#include "Rendering/Backend/IBuffer.hpp"
+#include "Rendering/Backend/IShader.hpp"
 
 #include <glad/gl.h>
 
 namespace Jupiter::Rendering::OpenGL {
-inline constexpr GLenum JupiterToOpenGLBaseType(ShaderDataType type) {
-  using enum ShaderDataType;
+inline constexpr GLenum JupiterToOpenGLBaseType(RHI::ShaderDataType type) {
+  using enum RHI::ShaderDataType;
   switch (type) {
+  case Bool:
+  case Int:
+  case Int2:
+  case Int3:
+  case Int4:
+    return GL_INT;
+
+  case UInt:
+  case UInt2:
+  case UInt3:
+  case UInt4:
+    return GL_UNSIGNED_INT;
+
   case Float:
   case Float2:
+  case Float3:
+  case Float4:
   case Mat3:
   case Mat4:
     return GL_FLOAT;
-  case Bool:
-  case Int:
-    return GL_INT;
+
   default:
     UNREACHABLE("Undefined shader data type");
     return 0;
   }
 }
 
-inline constexpr GLenum JupiterToOpenGLBufferUsage(BufferUsage usage) {
-  using enum BufferUsage;
+inline constexpr GLenum JupiterToOpenGLBufferUsage(RHI::BufferUsage usage) {
+  using enum RHI::BufferUsage;
   switch (usage) {
   case Static:
     return GL_STATIC_DRAW;
@@ -39,15 +52,16 @@ inline constexpr GLenum JupiterToOpenGLBufferUsage(BufferUsage usage) {
   }
 };
 
-inline constexpr u32 JupiterToOpenGLShaderStage(ShaderType type) {
+inline constexpr u32 JupiterToOpenGLShaderStage(RHI::ShaderType type) {
+  using enum RHI::ShaderType;
   switch (type) {
-  case ShaderType::Vertex:
+  case Vertex:
     return GL_VERTEX_SHADER;
-  case ShaderType::Fragment:
+  case Fragment:
     return GL_FRAGMENT_SHADER;
-  case ShaderType::Geometry:
+  case Geometry:
     return GL_GEOMETRY_SHADER;
-  case ShaderType::Compute:
+  case Compute:
     return GL_COMPUTE_SHADER;
   default:
     UNREACHABLE("Undefined shader type");
@@ -55,19 +69,63 @@ inline constexpr u32 JupiterToOpenGLShaderStage(ShaderType type) {
   }
 }
 
-inline constexpr GLenum
-JupiterToOpenGLFramebufferTextureFormat(FramebufferTextureFormat f) {
-  switch (f) {
-  case FramebufferTextureFormat::RGBA8:
+inline GLenum
+JupiterToOpenGLInternalFormat(RHI::TextureFormat format) noexcept {
+  using enum RHI::TextureFormat;
+  switch (format) {
+  case R8:
+    return GL_R8;
+  case RGB8:
+    return GL_RGB8;
+  case RGBA8:
     return GL_RGBA8;
-  case FramebufferTextureFormat::RGBA16F:
-    return GL_RGBA16F;
-  case FramebufferTextureFormat::RedInteger:
-    return GL_R32I;
-  case FramebufferTextureFormat::Depth24Stencil8:
-    return GL_DEPTH24_STENCIL8;
   default:
-    UNREACHABLE("Undefined framebuffer texture format");
+    UNREACHABLE("Unknown texture format");
+    return 0;
+  }
+}
+
+inline GLenum JupiterToOpenGLDataFormat(RHI::TextureFormat format) noexcept {
+  using enum RHI::TextureFormat;
+  switch (format) {
+  case R8:
+    return GL_RED;
+  case RGB8:
+    return GL_RGB;
+  case RGBA8:
+    return GL_RGBA;
+  default:
+    UNREACHABLE("Unknown texture format");
+    return 0;
+  }
+}
+
+inline GLenum JupiterToOpenGLTextureFilter(RHI::FilterMode filter) noexcept {
+  using enum RHI::FilterMode;
+  switch (filter) {
+  case Nearest:
+    return GL_NEAREST;
+  case Linear:
+    return GL_LINEAR;
+  default:
+    UNREACHABLE("Unknown texture filter");
+    return 0;
+  }
+}
+
+inline GLenum JupiterToOpenGLTextureWrap(RHI::WrapMode wrap) noexcept {
+  using enum RHI::WrapMode;
+  switch (wrap) {
+  case Repeat:
+    return GL_REPEAT;
+  case MirroredRepeat:
+    return GL_MIRRORED_REPEAT;
+  case ClampToEdge:
+    return GL_CLAMP_TO_EDGE;
+  case ClampToBorder:
+    return GL_CLAMP_TO_BORDER;
+  default:
+    UNREACHABLE("Unknown texture format");
     return 0;
   }
 }

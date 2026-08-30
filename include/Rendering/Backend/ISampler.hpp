@@ -4,21 +4,18 @@
 namespace Jupiter::Rendering::RHI {
 
 enum class FilterMode : u8 { Nearest, Linear };
-enum class WrapMode : u8 { Repeat, ClampToEdge, MirroredRepeat };
+enum class WrapMode : u8 { Repeat, ClampToEdge, MirroredRepeat, ClampToBorder };
 
 struct SamplerSpec {
-  FilterMode minFilter = FilterMode::Linear;
-  FilterMode magFilter = FilterMode::Linear;
-  WrapMode wrapS = WrapMode::Repeat;
-  WrapMode wrapT = WrapMode::Repeat;
+  FilterMode minFilter{FilterMode::Linear}, magFilter{FilterMode::Linear};
+  WrapMode wrapS{WrapMode::Repeat}, wrapT{WrapMode::Repeat};
 };
 
 class ISampler {
 public:
   virtual ~ISampler() = default;
-  virtual void Bind(u32 slot) const = 0;
 
-  static Ref<ISampler> Create(const SamplerSpec &spec);
+  static Scope<ISampler> Create(const SamplerSpec &nfo);
 };
 
 } // namespace Jupiter::Rendering::RHI

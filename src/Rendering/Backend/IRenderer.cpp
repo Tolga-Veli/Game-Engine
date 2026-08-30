@@ -1,9 +1,9 @@
-#include "IRenderer.hpp"
+#include "Rendering/Backend/IRenderer.hpp"
 
 #include "Rendering/OpenGL/Renderer.hpp"
 #include "Rendering/Renderer.hpp"
 
-namespace Jupiter::Rendering {
+namespace Jupiter::Rendering::RHI {
 
 Scope<IRenderer> IRenderer::Create() {
   switch (Renderer::GetAPI()) {
@@ -13,4 +13,4 @@ Scope<IRenderer> IRenderer::Create() {
     return nullptr;
   }
 }
-} // namespace Jupiter::Rendering
+} // namespace Jupiter::Rendering::RHI

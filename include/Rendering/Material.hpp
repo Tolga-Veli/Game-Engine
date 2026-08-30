@@ -8,7 +8,8 @@
 namespace Jupiter::Rendering {
 class Material {
 public:
-  ~Material() = default;
+  Material() = delete;
+  ~Material() noexcept = default;
 
   Material(const Material &) = default;
   Material &operator=(const Material &) = default;
@@ -39,7 +40,7 @@ public:
     SetProperty(name, MaterialType(std::forward<T>(val)));
   }
 
-  void SetProperty(std::string_view name, const ShaderParamValue &val) {
+  void SetProperty(std::string_view name, const RHI::ShaderParamValue &val) {
     auto [it, _] = m_Properties.insert_or_assign(std::string(name), val);
 
     if (m_Impl)
@@ -70,7 +71,7 @@ public:
   }
 
   [[nodiscard]]
-  const ShaderParamValue *Find(std::string_view name) const {
+  const RHI::ShaderParamValue *Find(std::string_view name) const {
     const auto it = m_Properties.find(std::string(name));
 
     if (it == m_Properties.end())
@@ -91,7 +92,7 @@ public:
   }
 
   [[nodiscard]]
-  const std::unordered_map<std::string, ShaderParamValue> &
+  const std::unordered_map<std::string, RHI::ShaderParamValue> &
   GetProperties() const noexcept {
     return m_Properties;
   }
@@ -103,9 +104,9 @@ public:
 
 private:
   Assets::AssetHandle<Shader> m_ShaderHandle;
-  std::unordered_map<std::string, ShaderParamValue> m_Properties;
-  Ref<IMaterial> m_Impl;
+  std::unordered_map<std::string, RHI::ShaderParamValue> m_Properties;
+  Ref<RHI::IMaterial> m_Impl;
 
-  explicit Material(Ref<IMaterial> impl) : m_Impl(std::move(impl)) {}
+  explicit Material(Ref<RHI::IMaterial> impl) : m_Impl(std::move(impl)) {}
 };
 } // namespace Jupiter::Rendering

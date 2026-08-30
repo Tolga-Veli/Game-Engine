@@ -1,24 +1,48 @@
 #pragma once
 
 #include "Buffer.hpp"
-
 #include "Rendering/Backend/BufferLayout.hpp"
 
 #include <glad/gl.h>
+#include <utility>
 
 namespace Jupiter::Rendering::OpenGL {
 class VertexArray {
 public:
-  VertexArray() noexcept;
-  ~VertexArray() noexcept;
+  VertexArray() noexcept { glCreateVertexArrays(1, &m_RendererID); }
+  ~VertexArray() noexcept {
+    if (m_RendererID)
+      glDeleteVertexArrays(1, &m_RendererID);
+  }
 
-  void Bind() noexcept;
-  void Unbind() noexcept;
+  VertexArray(const VertexArray &) = delete;
+  VertexArray &operator=(const VertexArray &) = delete;
 
-  void ConfigureVertexBuffer(const Buffer &buff,
-                             const RHI::BufferLayout &layout);
+  VertexArray(VertexArray &&other) noexcept
+      : m_RendererID(std::exchange(other.m_RendererID, 0)) {}
 
-  void ConfigureIndexBuffer(const Buffer &buff);
+  VertexArray &operator=(VertexArray &&other) noexcept {
+    if (this == &other)
+      return *this;
+
+    if (m_RendererID)
+      glDeleteVertexArrays(1, &m_RendererID);
+
+    m_RendererID = std::exchange(other.m_RendererID, 0);
+    return *this;
+  }
+
+  void Bind() const noexcept { glBindVertexArray(m_RendererID); }
+
+  void AddVertexBuffer(const Buffer &buff, const RHI::BufferLayout &layout,
+                       u32 div = 0);
+
+  void SetIndexBuffer(const Buffer &buff);
+
+  [[nodiscard]]
+  u32 GetRendererID() const noexcept {
+    return m_RendererID;
+  }
 
 private:
   u32 m_RendererID{};

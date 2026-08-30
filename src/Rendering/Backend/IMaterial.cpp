@@ -1,4 +1,4 @@
-#include "IMaterial.hpp"
+#include "Rendering/Backend/IMaterial.hpp"
 
 #include "Core/Assert.hpp"
 
@@ -6,7 +6,7 @@
 #include "Rendering/Renderer.hpp"
 #include "Rendering/OpenGL/Material.hpp"
 
-namespace Jupiter::Rendering {
+namespace Jupiter::Rendering::RHI {
 Scope<IMaterial> IMaterial::Create() {
   switch (Renderer::GetAPI()) {
   case GraphicsAPI::OpenGL:
@@ -17,4 +17,4 @@ Scope<IMaterial> IMaterial::Create() {
   }
 }
 
-} // namespace Jupiter::Rendering
+} // namespace Jupiter::Rendering::RHI

@@ -5,7 +5,6 @@
 
 #include "Rendering/Backend/IGraphicsContext.hpp"
 #include "Rendering/TextRenderer.hpp"
-#include "Rendering/RenderThread.hpp"
 
 #include "Engine/Simulation.hpp"
 #include "Engine/PlanetRenderer.hpp"

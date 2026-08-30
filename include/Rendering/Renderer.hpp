@@ -1,17 +1,18 @@
 #pragma once
 
-#include "Rendering/Backend/RenderUtils.hpp"
+#include "Core/Utils.hpp"
 #include "Rendering/Backend/IRenderer.hpp"
 #include "Rendering/Backend/RenderQueue.hpp"
 
 namespace Jupiter::Rendering {
+enum class GraphicsAPI { None = 0, OpenGL, Vulkan, Metal, DX11, DX12, Count };
 
 class Renderer {
 public:
   // ===================================
   // Game thread API.
   // ===================================
-  static void BeginFrame(const SceneData &sceneData);
+  static void BeginFrame(const RHI::SceneData &sceneData);
   static void Submit(const RHI::RenderCommand &command);
   static void EndFrame(); // Blocks until the render thread finishes consuming
                           // the frame - bounds the
@@ -33,7 +34,7 @@ public:
 private:
   static GraphicsAPI s_RendererAPI;
   static Scope<RHI::IRenderer> s_RendererImplementation;
-  static RenderQueue s_RenderQueue;
+  static RHI::RenderQueue s_RenderQueue;
 };
 
 } // namespace Jupiter::Rendering

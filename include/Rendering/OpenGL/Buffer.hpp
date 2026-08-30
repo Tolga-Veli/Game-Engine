@@ -68,21 +68,22 @@ public:
   }
 
   [[nodiscard]]
-  u32 GetSize() const noexcept override {
-    return m_Desc.size;
-  }
-
-  [[nodiscard]]
   RHI::BufferType GetType() const noexcept {
     return m_Desc.type;
   }
+
+  void Bind() const noexcept {
+    glBindBuffer(JupiterToOpenGLBuffer(m_Desc.type), m_RendererID);
+  }
+
+  void Unbind() const noexcept;
+
+  void SetData(const void *data, u32 size, u32 offset = 0) noexcept override;
 
   [[nodiscard]]
   u32 GetRendererID() const noexcept {
     return m_RendererID;
   }
-
-  void SetData(const void *data, u32 size, u32 offset = 0) noexcept override;
 
 private:
   u32 m_RendererID{};

@@ -1,12 +1,12 @@
 #pragma once
 
 #include "Rendering/Backend/IRenderer.hpp"
-#include "RenderCommand.hpp"
-#include "SceneData.hpp"
+#include "Rendering/Backend/RenderCommand.hpp"
+#include "Rendering/Backend/SceneData.hpp"
 
 #include <condition_variable>
 
-namespace Jupiter::Rendering {
+namespace Jupiter::Rendering::RHI {
 
 struct Frame {
   SceneData sceneData;
@@ -38,4 +38,4 @@ private:
   std::condition_variable m_ReadyCV, m_FreeCV;
   bool m_Stopping{false};
 };
-} // namespace Jupiter::Rendering
+} // namespace Jupiter::Rendering::RHI

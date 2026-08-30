@@ -1,53 +1,73 @@
-#include "Core/Utils.hpp"
 #include "Core/Assert.hpp"
+#include "Core/Utils.hpp"
 
+#include "Rendering/Backend/BufferLayout.hpp"
+#include "Rendering/Backend/IBuffer.hpp"
+
+#include "Rendering/OpenGL/Buffer.hpp"
+#include "Rendering/OpenGL/OpenGL-Utils.hpp"
 #include "Rendering/OpenGL/VertexArray.hpp"
 
 namespace Jupiter::Rendering::OpenGL {
 
-void VertexArray::AddVertexBuffer(VertexBuffer &vertexBuffer,
-                                  u32 divisor) noexcept {
-  CORE_ASSERT(!vertexBuffer.GetLayout().GetElements().empty(),
-              "Vertex Buffer is empty");
+void VertexArray::AddVertexBuffer(const Buffer &vertexBuffer,
+                                  const RHI::BufferLayout &layout,
+                                  u32 divisor) {
+  CORE_ASSERT(vertexBuffer.GetType() == RHI::BufferType::Vertex,
+              "Wrong buffer type passed into vertex array");
 
-  Bind();
-  vertexBuffer.Bind();
+  u32 binding = 0;
+  glVertexArrayVertexBuffer(m_RendererID, binding, vertexBuffer.GetRendererID(),
+                            0, layout.GetStride());
 
-  const auto layout = vertexBuffer.GetLayout();
+  if (divisor > 0)
+    glVertexArrayBindingDivisor(m_RendererID, binding, divisor);
+
   for (const auto &element : layout) {
-    const auto &type = element.type;
+    const auto type = element.type;
 
-    u32 cnt = ShaderDataTypeComponentCount(type);
-    if (type == ShaderDataType::Mat3 || type == ShaderDataType::Mat4) {
-      u8 columnCount = (type == ShaderDataType::Mat3) ? 3 : 4;
-      for (u8 i = 0; i < columnCount; i++) {
-        glEnableVertexAttribArray(element.location + i);
-        glVertexAttribPointer(
-            element.location + i, columnCount, JupiterToOpenGLBaseType(type),
-            element.normalized ? GL_TRUE : GL_FALSE, layout.GetStride(),
-            reinterpret_cast<const void *>(static_cast<uintptr_t>(
-                element.offset + sizeof(float) * columnCount * i)));
+    if (type == RHI::ShaderDataType::Mat3 ||
+        type == RHI::ShaderDataType::Mat4) {
 
-        if (divisor > 0)
-          glVertexAttribDivisor(element.location + i, divisor);
+      const u32 cols = type == RHI::ShaderDataType::Mat3 ? 3 : 4;
+      for (u32 col = 0; col < cols; ++col) {
+        const u32 location = element.location + col;
+
+        glEnableVertexArrayAttrib(m_RendererID, location);
+
+        glVertexArrayAttribFormat(
+            m_RendererID, location, cols, JupiterToOpenGLBaseType(type),
+            element.normalized, element.offset + sizeof(float) * cols * col);
+
+        glVertexArrayAttribBinding(m_RendererID, location, binding);
       }
-    } else {
-      glEnableVertexAttribArray(element.location);
-      glVertexAttribPointer(
-          element.location, cnt, JupiterToOpenGLBaseType(type),
-          element.normalized ? GL_TRUE : GL_FALSE, layout.GetStride(),
-          reinterpret_cast<const void *>(
-              static_cast<uintptr_t>(element.offset)));
 
-      if (divisor > 0)
-        glVertexAttribDivisor(element.location, divisor);
+      continue;
     }
+
+    const u32 location = element.location,
+              count = ShaderDataTypeComponentCount(type);
+
+    glEnableVertexArrayAttrib(m_RendererID, location);
+
+    if (type == RHI::ShaderDataType::Int || type == RHI::ShaderDataType::UInt) {
+      glVertexArrayAttribIFormat(m_RendererID, location, count,
+                                 JupiterToOpenGLBaseType(type), element.offset);
+
+    } else
+      glVertexArrayAttribFormat(m_RendererID, location, count,
+                                JupiterToOpenGLBaseType(type),
+                                element.normalized, element.offset);
+
+    glVertexArrayAttribBinding(m_RendererID, location, binding);
   }
 }
 
-void VertexArray::SetIndexBuffer(IndexBuffer &indexBuffer) noexcept {
-  Bind();
-  indexBuffer.Bind();
+void VertexArray::SetIndexBuffer(const Buffer &indexBuffer) {
+  CORE_ASSERT(indexBuffer.GetType() == RHI::BufferType::Index,
+              "Wrong buffer type passed into vertex array");
+
+  glVertexArrayElementBuffer(m_RendererID, indexBuffer.GetRendererID());
 }
 
 } // namespace Jupiter::Rendering::OpenGL

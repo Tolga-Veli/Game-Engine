@@ -19,7 +19,6 @@ public:
 
   Shader(const Shader &) = delete;
   Shader &operator=(const Shader &) = delete;
-
   Shader(Shader &&) noexcept = default;
   Shader &operator=(Shader &&) noexcept = default;
 

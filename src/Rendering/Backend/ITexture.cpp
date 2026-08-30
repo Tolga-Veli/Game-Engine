@@ -1,20 +1,20 @@
-#include "ITexture.hpp"
+#include "Rendering/Backend/ITexture.hpp"
 
-#include "Rendering/Renderer.hpp"
+#include "Rendering/Backend/ITexture.hpp"
 #include "Rendering/OpenGL/Texture2D.hpp"
+#include "Rendering/Renderer.hpp"
 
 #include "Core/Assert.hpp"
 
-namespace Jupiter::Rendering {
-Scope<ITexture> ITexture::Create(const void *pixels, i32 width, i32 height,
-                                 i32 channels) {
+namespace Jupiter::Rendering::RHI {
+Scope<ITexture> ITexture::Create(const RHI::TextureCreateSpec &info) {
   switch (Renderer::GetAPI()) {
   case GraphicsAPI::OpenGL:
-    return CreateScope<OpenGL::Texture2D>(pixels, width, height, channels);
+    return CreateScope<OpenGL::Texture2D>(info);
   default:
     CORE_ASSERT(false, "IVertexBuffer::Create() Renderer API not implemented");
     return nullptr;
   }
 }
 
-} // namespace Jupiter::Rendering
+} // namespace Jupiter::Rendering::RHI

@@ -36,9 +36,6 @@ public:
   IBuffer(IBuffer &&) = delete;
   IBuffer &operator=(IBuffer &&) = delete;
 
-  [[nodiscard]]
-  virtual u32 GetSize() const noexcept = 0;
-
   virtual void SetData(const void *data, u32 size, u32 offset = 0) noexcept = 0;
 
 protected:

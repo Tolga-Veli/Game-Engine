@@ -8,6 +8,8 @@ class IMaterial {
 public:
   virtual ~IMaterial() = default;
 
+  static Scope<IMaterial> Create();
+
   virtual void SetShader(Assets::AssetHandle<Shader> shader) = 0;
 
   virtual void SetProperty(std::string_view name,

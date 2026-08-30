@@ -1,14 +1,14 @@
-#include "Renderer.hpp"
-#include "Material.hpp"
+#include "Rendering/Renderer.hpp"
+#include "Rendering/Material.hpp"
 
 namespace Jupiter::Rendering {
 
 GraphicsAPI Renderer::s_RendererAPI = GraphicsAPI::OpenGL;
-Scope<IRenderer> Renderer::s_RendererImplementation;
-RenderQueue Renderer::s_RenderQueue{};
+Scope<RHI::IRenderer> Renderer::s_RendererImplementation;
+RHI::RenderQueue Renderer::s_RenderQueue{};
 
 void Renderer::Init() {
-  s_RendererImplementation = IRenderer::Create();
+  s_RendererImplementation = RHI::IRenderer::Create();
   s_RendererImplementation->Init();
 }
 
@@ -21,7 +21,7 @@ void Renderer::Shutdown() {
 }
 
 bool Renderer::RenderNextFrame() {
-  Frame *frame = s_RenderQueue.WaitForFrame();
+  RHI::Frame *frame = s_RenderQueue.WaitForFrame();
 
   if (!frame)
     return false;
@@ -48,11 +48,11 @@ bool Renderer::RenderNextFrame() {
 
 void Renderer::RequestStop() { s_RenderQueue.Stop(); }
 
-void Renderer::BeginFrame(const SceneData &sceneData) {
+void Renderer::BeginFrame(const RHI::SceneData &sceneData) {
   s_RenderQueue.BeginFrame(sceneData);
 }
 
-void Renderer::Submit(const RenderCommand &cmd) {
+void Renderer::Submit(const RHI::RenderCommand &cmd) {
   if (!cmd.mesh || !cmd.material)
     return;
 
