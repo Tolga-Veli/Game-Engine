@@ -3,28 +3,37 @@
 #include "Core/Utils.hpp"
 
 #include "Rendering/Backend/RenderUtils.hpp"
+#include "Assets/AssetHandle.hpp"
+#include "Rendering/Texture.hpp"
 
 #include <string>
-#include <glm/glm.hpp>
 #include <filesystem>
+#include <glm/glm.hpp>
 
 namespace Jupiter::Rendering {
+
+using ShaderParamValue =
+    std::variant<bool, i32, u32, f32, glm::vec2, glm::vec3, glm::vec4,
+                 glm::mat3, glm::mat4, Assets::AssetHandle<Texture>>;
+
+struct ShaderParameter {
+  std::string name;
+  ShaderDataType type;
+};
+
 class IShader {
 public:
+  using ShaderSources =
+      const std::array<std::string, EnumToSize(ShaderType::Count)>;
   virtual ~IShader() = default;
 
-  virtual void Bind() const = 0;
-  virtual void Unbind() const = 0;
+  static Scope<IShader> Create(const ShaderSources &shaderSrcs);
 
-  static Ref<IShader> LoadFromFile(const std::filesystem::path &path);
+  static Scope<IShader> LoadFromFile(const std::filesystem::path &path);
 
-  virtual void SetInt(std::string_view name, i32 value) = 0;
-  virtual void SetFloat(std::string_view name, float value) = 0;
-  virtual void SetVec3(std::string_view name, const glm::vec3 &value) = 0;
-  virtual void SetVec4(std::string_view name, const glm::vec4 &value) = 0;
-  virtual void SetMat4(std::string_view name, const glm::mat4 &value) = 0;
+  [[nodiscard]] virtual std::string_view GetName() const noexcept = 0;
 
-  static Ref<IShader> Create(
-      const std::array<std::string, EnumToSize(ShaderType::Count)> &shaderSrcs);
+  [[nodiscard]]
+  virtual const std::vector<ShaderParameter> &GetInputs() const noexcept = 0;
 };
 } // namespace Jupiter::Rendering

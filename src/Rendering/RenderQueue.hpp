@@ -1,6 +1,9 @@
 #pragma once
 
 #include "Rendering/Backend/IRenderer.hpp"
+#include "RenderCommand.hpp"
+#include "SceneData.hpp"
+
 #include <condition_variable>
 
 namespace Jupiter::Rendering {

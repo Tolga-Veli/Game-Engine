@@ -10,13 +10,11 @@ inline constexpr GLenum JupiterToOpenGLBaseType(ShaderDataType type) {
   switch (type) {
   case Float:
   case Float2:
-  case Float3:
-  case Float4:
   case Mat3:
   case Mat4:
     return GL_FLOAT;
+  case Bool:
   case Int:
-  case Int2:
     return GL_INT;
   default:
     UNREACHABLE("Undefined shader data type");

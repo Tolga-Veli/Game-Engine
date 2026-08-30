@@ -1,28 +1,26 @@
 #pragma once
 
-#include "Rendering/Backend/IVertexArray.hpp"
-
-#include "Assets/Types.hpp"
+#include "Assets/AssetManager.hpp"
+#include "Rendering/Backend/IMesh.hpp"
+#include "Core/Utils.hpp"
 
 namespace Jupiter::Rendering {
 class Mesh {
 public:
-  Mesh() = default;
-  Mesh(const Ref<IVertexArray> &vertexArray) : m_VertexArray(vertexArray) {}
+  ~Mesh() = default;
 
-  virtual ~Mesh() = default;
-
-  static Assets::AssetHandle<Mesh> Create(std::string_view,
-                                          std::vector<float> vertices,
-                                          std::vector<u32> indices,
-                                          BufferLayout layout);
-
-  void Bind() const { m_VertexArray->Bind(); }
-
-  Ref<IVertexArray> GetVertexArray() const { return m_VertexArray; }
+  Mesh(const Mesh &) = delete;
+  Mesh &operator=(const Mesh &) = delete;
+  Mesh(Mesh &&) noexcept = default;
+  Mesh &operator=(Mesh &&) noexcept = default;
 
 private:
-  Ref<IVertexArray> m_VertexArray;
+  Scope<IMesh> m_Impl;
+
+private:
+  friend class Assets::AssetManager;
+
+  explicit Mesh(Scope<IMesh> impl) : m_Impl(std::move(impl)) {}
 };
 
 } // namespace Jupiter::Rendering

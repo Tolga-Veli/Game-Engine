@@ -2,18 +2,15 @@
 
 #include "Core/Utils.hpp"
 
-#include "Traits.hpp"
 #include "Types.hpp"
-#include "Pool.hpp"
+#include "AssetPools.hpp"
+#include "AssetTraits.hpp"
 
-#include <chrono>
 #include <filesystem>
-#include <unordered_map>
-#include <string>
-#include <mutex>
-#include <shared_mutex>
+#include <chrono>
 #include <thread>
 #include <mutex>
+#include <shared_mutex>
 
 // IDEA:
 // Game thread owns AssetHandle<T>
@@ -67,12 +64,14 @@ public:
     return std::this_thread::get_id() == m_RenderThreadID;
   }
 
-  template <class T>
-  static AssetHandle<T> Get(const fs::path &path, LoadOptions opts = {}) {
-    return GetInstance().GetAssetHelper<T>(path, std::move(opts));
+  template <Asset T>
+  static AssetHandle<T>
+  Get(const fs::path &path,
+      const typename AssetTraits<T>::LoadOptions &opts = {}) {
+    return GetInstance().GetAssetHelper<T>(path, opts);
   }
 
-  template <class T> static Ref<T> Resolve(AssetHandle<T> handle) {
+  template <Asset T> static Ref<T> Resolve(AssetHandle<T> handle) {
     return GetInstance().ResolveHelper<T>(handle);
   }
 
@@ -86,7 +85,7 @@ public:
   //    return Mesh::Create(...);
   // });
 
-  template <class T, class Factory>
+  template <Asset T, class Factory>
   static AssetHandle<T> Create(std::string_view name, Factory &&factory) {
     return GetInstance().CreateHelper<T>(name, std::forward<Factory>(factory));
   }
@@ -146,156 +145,25 @@ private:
     m_RenderTasks.push_back(std::move(task));
   }
 
-  template <class T>
-  AssetHandle<T> GetAssetHelper(const fs::path &relativePath,
-                                const LoadOptions &opts) {
-    CORE_ASSERT(IsRenderThread(),
-                "Asset loading must be ran on the render thread");
+  template <Asset T>
+  AssetHandle<T>
+  GetAssetHelper(const fs::path &relativePath,
+                 const typename AssetTraits<T>::LoadOptions &opts);
 
-    const fs::path path = (m_AssetsDir / relativePath).lexically_normal();
-    std::string name = relativePath.generic_string();
-
-    const AssetID id = AssetTraits<T>::MakeID(path, opts);
-    {
-      std::shared_lock lock(m_Mutex);
-      if (auto it = m_Registry.find(id); it != m_Registry.end())
-        return AssetHandle<T>{it->second.pool_idx, it->second.pool_gen};
-    }
-
-    auto value = AssetTraits<T>::LoadFromFile(path, opts);
-    if (!value) {
-      LOG_ERROR("AssetManager: failed to load {} '{}'", AssetTraits<T>::Str,
-                path.string());
-
-      return {};
-    }
-
-    std::error_code ec;
-    const auto writeTime = fs::last_write_time(path, ec);
-
-    std::unique_lock lock(m_Mutex);
-    if (auto it = m_Registry.find(id); it != m_Registry.end())
-      return AssetHandle<T>{it->second.pool_idx, it->second.pool_gen};
-
-    auto &pool = m_AssetPools.GetPool<T>();
-    AssetHandle<T> handle = pool.Insert(std::move(value));
-
-    m_Registry.emplace(id, AssetRecord{AssetTraits<T>::Type, name, path,
-                                       writeTime, handle.idx, handle.gen,
-                                       std::move(opts), false});
-
-    LOG_INFO("AssetManager: loaded {} '{}'", AssetTraits<T>::Str, name);
-    return handle;
-  }
-
-  template <class T> Ref<T> ResolveHelper(const AssetHandle<T> &handle) const {
-    std::shared_lock lock(m_Mutex);
-    const auto *value = m_AssetPools.GetPool<T>().Resolve(handle);
-    return value ? *value : Ref<T>{};
-  }
+  template <Asset T> Ref<T> ResolveHelper(const AssetHandle<T> &handle) const;
 
   // Reserve+register happen synchronously so concurrent Create() calls for
   // the same name still dedupe correctly regardless of which thread they
   // come from. factory() itself is queued and only ever runs later, on the
   // render thread, out of ProcessRenderTasks().
-  template <class T, class Factory>
-  AssetHandle<T> CreateHelper(std::string_view name, Factory &&factory) {
-    const AssetID id = HashRuntimeAssetName(name, AssetTraits<T>::Type);
+  template <Asset T, class Factory>
+  AssetHandle<T> CreateHelper(std::string_view name, Factory &&factory);
 
-    {
-      std::shared_lock lock(m_Mutex);
-      if (auto it = m_Registry.find(id); it != m_Registry.end())
-        return AssetHandle<T>{it->second.pool_idx, it->second.pool_gen};
-    }
+  template <Asset T> void ReloadHelper(const PendingReload &job);
 
-    std::string nameStr(name);
-    AssetHandle<T> handle;
-    {
-      std::unique_lock lock(m_Mutex);
-
-      // someone may have beaten us to it between the two locks above
-      if (auto it = m_Registry.find(id); it != m_Registry.end())
-        return AssetHandle<T>{it->second.pool_idx, it->second.pool_gen};
-
-      handle = m_AssetPools.GetPool<T>().Reserve();
-      m_Registry.emplace(id, AssetRecord{AssetTraits<T>::Type,
-                                         nameStr,
-                                         {},
-                                         {},
-                                         {},
-                                         handle.idx,
-                                         handle.gen,
-                                         true});
-    }
-
-    QueueRenderTask([this, id, handle, nameStr,
-                     factory = std::forward<Factory>(factory)]() mutable {
-      // IMPORTANT:
-      // GPU creation happens here, on the render thread, whenever
-      // ProcessRenderTasks() next picks this task up.
-      Ref<T> value = factory();
-
-      std::unique_lock lock(m_Mutex);
-
-      // Shutdown() may have cleared the pools out from under this task
-      if (!m_AssetPools.GetPool<T>().IsValid(handle))
-        return;
-
-      if (!value) {
-        LOG_ERROR("AssetManager: failed to create runtime {} '{}'",
-                  AssetTraits<T>::Str, nameStr);
-
-        m_AssetPools.GetPool<T>().Release(handle);
-        m_Registry.erase(id);
-        return;
-      }
-
-      m_AssetPools.GetPool<T>().Replace(handle, std::move(value));
-
-      LOG_INFO("AssetManager: created runtime {} '{}'", AssetTraits<T>::Str,
-               nameStr);
-    });
-
-    return handle;
-  }
-
-  template <class T> void ReloadHelper(const PendingReload &job) {
-    CORE_ASSERT(IsRenderThread(), "Asset reload must run on render thread");
-
-    AssetRecord record;
-    {
-      std::shared_lock lock(m_Mutex);
-      auto it = m_Registry.find(job.id);
-      if (it == m_Registry.end())
-        return;
-
-      record = it->second;
-    }
-
-    if (record.runtime_created || record.path.empty())
-      return;
-
-    auto reloaded = AssetTraits<T>::LoadFromFile(job.path, record.load_options);
-    if (!reloaded) {
-      LOG_ERROR("AssetManager: hot reload FAILED for {} '{}'",
-                AssetTraits<T>::Str, job.path.string());
-
-      return;
-    }
-
-    {
-      std::unique_lock lock(m_Mutex);
-      auto it = m_Registry.find(job.id);
-      if (it == m_Registry.end())
-        return;
-
-      AssetHandle<T> handle{it->second.pool_idx, it->second.pool_gen};
-      if (!m_AssetPools.GetPool<T>().Replace(handle, std::move(reloaded)))
-        return;
-    }
-
-    LOG_INFO("AssetManager: reloaded {} '{}'", AssetTraits<T>::Str,
-             record.name);
+  template <Asset T>
+  static Ref<T> CreateAssetFromImpl(Scope<typename AssetTraits<T>::Impl> impl) {
+    return CreateRef<T>(std::move(impl));
   }
 };
 } // namespace Jupiter::Assets

@@ -1,93 +1,124 @@
 #include "Shader.hpp"
-#include "Core/Utils.hpp"
+
+#include "Core/Assert.hpp"
 #include "Core/Logging.hpp"
 
-#include <vector>
-#include <array>
-#include <string_view>
+#include "OpenGL-Utils.hpp"
+
+#include <glm/glm.hpp>
+
+#include <fstream>
+#include <sstream>
+#include <string>
 
 namespace Jupiter::Rendering::OpenGL {
-i32 Shader::GetUniformLocation(std::string_view name) const {
-  const std::string name_str(name);
-  if (m_UniformLocationCache.find(name_str) != m_UniformLocationCache.end())
-    return m_UniformLocationCache[name_str];
 
-  i32 location = glGetUniformLocation(m_ShaderProgram, name_str.c_str());
-  if (location == -1) {
-    LOG_ERROR("Uniform '{}' not found in shader!", name);
-    m_UniformLocationCache.emplace(name_str, -1);
-    return -1;
+Shader::Shader(
+    const std::array<std::string, EnumToSize(ShaderType::Count)> &shaderSrcs) {
+  m_RendererID = glCreateProgram();
+
+  if (!m_RendererID) {
+    LOG_ERROR("Failed to create OpenGL shader program.");
+    return;
   }
 
-  m_UniformLocationCache[name_str] = location;
-  return location;
-}
+  for (u32 i = 0; i < EnumToSize(ShaderType::Count); ++i) {
+    const auto type = static_cast<ShaderType>(i);
+    const auto &source = shaderSrcs[i];
 
-u32 Shader::CreateProgram(
-    const std::array<std::string, EnumToSize(ShaderType::Count)> &stages) {
-  u32 program = glCreateProgram();
-  std::vector<u32> shaderIDs;
-  auto sz = EnumToSize(ShaderType::Count);
-  for (u32 i = 1; i < sz; i++) {
-    if (stages[i].empty())
+    if (source.empty())
       continue;
 
-    u32 id = CompileShader(ShaderType{i}, stages[i]);
-    if (id != 0) {
-      glAttachShader(program, id);
-      shaderIDs.push_back(id);
-    }
+    Compile(type, source);
   }
 
-  glLinkProgram(program);
+  glLinkProgram(m_RendererID);
 
-  i32 status = 0;
-  glGetProgramiv(program, GL_LINK_STATUS, &status);
-  if (!status) {
-    i32 length = 0;
-    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
+  i32 success{};
+  glGetProgramiv(m_RendererID, GL_LINK_STATUS, &success);
 
-    std::vector<char> info(length);
-    glGetProgramInfoLog(program, length, &length, info.data());
-    glDeleteProgram(program);
-
-    LOG_ERROR("Shader linking Failed: {}", info.data());
-    return 0;
-  }
-
-  for (auto id : shaderIDs) {
-    glDetachShader(program, id);
-    glDeleteShader(id);
-  }
-
-  return program;
-}
-
-u32 Shader::CompileShader(ShaderType type, std::string_view source) {
-  u32 id = glCreateShader(JupiterToOpenGLShaderStage(ShaderType(type)));
-
-  const char *src = source.data();
-  GLint length = source.size();
-
-  glShaderSource(id, 1, &src, &length);
-  glCompileShader(id);
-
-  i32 success = 0;
-  glGetShaderiv(id, GL_COMPILE_STATUS, &success);
   if (!success) {
-    i32 length = 0;
-    glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
+    i32 infoLength{};
+    glGetProgramiv(m_RendererID, GL_INFO_LOG_LENGTH, &infoLength);
 
-    std::vector<char> info(length);
-    glGetShaderInfoLog(id, length, &length, info.data());
+    std::string infoLog(static_cast<std::size_t>(infoLength), '\0');
+    glGetProgramInfoLog(m_RendererID, infoLength, nullptr, infoLog.data());
 
-    LOG_ERROR("{} Shader compilation failed:\n{}", to_string(type),
-              info.data());
-    glDeleteShader(id);
-    return 0;
+    LOG_ERROR("Failed to link OpenGL shader program:\n{}", infoLog);
+
+    glDeleteProgram(m_RendererID);
+    m_RendererID = 0;
+    return;
   }
 
-  return id;
+  Reflect();
 }
 
+Shader::~Shader() {
+  if (m_RendererID)
+    glDeleteProgram(m_RendererID);
+}
+
+void Shader::Compile(ShaderType type, std::string_view source) {
+  const u32 glType = JupiterToOpenGLShaderStage(type),
+            shader = glCreateShader(glType);
+
+  if (shader == 0) {
+    LOG_ERROR("Failed to create OpenGL {} shader.", to_string(type));
+    return;
+  }
+
+  const char *sourcePtr = source.data();
+  const i32 sourceLength = static_cast<GLint>(source.size());
+
+  glShaderSource(shader, 1, &sourcePtr, &sourceLength);
+  glCompileShader(shader);
+
+  i32 success{};
+  glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+
+  if (!success) {
+    i32 infoLength{};
+    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLength);
+
+    std::string infoLog(static_cast<std::size_t>(infoLength), '\0');
+    glGetShaderInfoLog(shader, infoLength, nullptr, infoLog.data());
+
+    LOG_ERROR("Failed to compile OpenGL {} shader:\n{}", to_string(type),
+              infoLog);
+
+    glDeleteShader(shader);
+    return;
+  }
+
+  glAttachShader(m_RendererID, shader);
+  glDeleteShader(shader);
+}
+
+void Shader::Reflect() {
+  m_Inputs.clear();
+
+  i32 uniformCount = 0;
+  glGetProgramiv(m_RendererID, GL_ACTIVE_UNIFORMS, &uniformCount);
+
+  m_Inputs.reserve(static_cast<std::size_t>(uniformCount));
+  for (i32 i = 0; i < uniformCount; ++i) {
+    constexpr std::size_t MaxNameLength = 256;
+
+    char name[MaxNameLength];
+    i32 nameLength{}, size{};
+    u32 type{};
+
+    glGetActiveUniform(m_RendererID, static_cast<GLuint>(i), MaxNameLength,
+                       &nameLength, &size, &type, name);
+
+    const auto shaderType = OpenGLToJupiterShaderDataType(type);
+
+    if (shaderType == ShaderDataType::None)
+      continue;
+
+    m_Inputs.push_back(
+        {.name = std::string(name, nameLength), .type = shaderType});
+  }
+}
 } // namespace Jupiter::Rendering::OpenGL

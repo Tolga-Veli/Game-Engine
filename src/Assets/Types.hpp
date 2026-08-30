@@ -2,15 +2,12 @@
 
 #include "Core/Utils.hpp"
 
-#include <limits>
-
 namespace Jupiter::Assets {
-
 using AssetID = u64;
 
 namespace detail {
 
-constexpr AssetID HashAssetName(std::string_view name) {
+constexpr u64 HashAssetName(std::string_view name) {
   // FNV-1a 64-bit offset basis and prime
   // https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
   // (Collisions should be basically impossible)
@@ -32,27 +29,9 @@ concept ToStringCompatible =
 
 } // namespace detail
 
-template <detail::ToStringCompatible... Args>
-inline constexpr AssetID HashAssetKey(std::string_view path,
-                                      std::string_view type, Args &&...args) {
-  std::string key = "file:";
-  key += path;
-  key += ':';
-  key += type;
-
-  auto append = [&](const auto &value) {
-    key += ':';
-    key += std::to_string(value);
-  };
-
-  (append(std::forward<Args>(args)), ...);
-
-  return detail::HashAssetName(key);
-}
-
 enum class AssetType : u8 { Texture, Shader, Audio, Font, Mesh, Material };
 
-inline std::string_view to_string(AssetType type) {
+inline constexpr std::string_view to_string(AssetType type) {
   switch (type) {
   case AssetType::Texture:
     return "Texture";
@@ -71,7 +50,25 @@ inline std::string_view to_string(AssetType type) {
   return "Unknown";
 }
 
-inline AssetID HashRuntimeAssetName(std::string_view name, AssetType type) {
+template <detail::ToStringCompatible... Args>
+inline constexpr u64 HashAssetKey(std::string_view path, AssetType type,
+                                  Args &&...args) {
+  std::string key = "file:";
+  key += path;
+  key += ':';
+  key += to_string(type);
+
+  auto append = [&](const auto &value) {
+    key += ':';
+    key += std::to_string(value);
+  };
+
+  (append(std::forward<Args>(args)), ...);
+
+  return detail::HashAssetName(key);
+}
+
+inline u64 HashRuntimeAssetName(std::string_view name, AssetType type) {
   std::string key = "runtime:";
   key += to_string(type);
   key += ':';
@@ -79,14 +76,5 @@ inline AssetID HashRuntimeAssetName(std::string_view name, AssetType type) {
 
   return detail::HashAssetName(key);
 }
-
-inline constexpr u32 k_InvalidAssetIndex = std::numeric_limits<u32>::max();
-
-template <class T> struct AssetHandle {
-  u32 idx{k_InvalidAssetIndex}, gen{};
-
-  constexpr bool IsValid() const noexcept { return idx != k_InvalidAssetIndex; }
-  constexpr bool operator==(const AssetHandle &other) const noexcept = default;
-};
 
 } // namespace Jupiter::Assets

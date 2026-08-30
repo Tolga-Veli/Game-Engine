@@ -15,16 +15,9 @@ Texture2D::Texture2D(const void *pixels, u32 width, u32 height, u32 channels)
   Upload(pixels, width, height, channels);
 }
 
-Ref<Texture2D> Texture2D::Create(const void *pixels, u32 width, u32 height,
-                                 u32 channels) {
-  return std::make_shared<Texture2D>(pixels, width, height, channels);
-}
-
-Ref<Texture2D> Texture2D::Create(FramebufferTextureFormat format, u32 width,
-                                 u32 height) {
-  auto texture = std::make_shared<Texture2D>();
-  texture->AllocateStorage(format, width, height);
-  return texture;
+Texture2D::~Texture2D() {
+  if (m_RendererID)
+    glDeleteTextures(1, &m_RendererID);
 }
 
 void Texture2D::Upload(const void *pixels, u32 width, u32 height,

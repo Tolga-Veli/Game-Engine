@@ -13,17 +13,16 @@ enum class BufferUsage { None = 0, Static, Dynamic, Stream, Count };
 
 enum class ShaderDataType : u32 {
   None = 0,
+  Bool,
+  Int,
+  UInt,
   Float,
   Float2,
-  Float3,
-  Float4,
+  Vec2,
+  Vec3,
+  Vec4,
   Mat3,
   Mat4,
-  Int,
-  Int2,
-  Int3,
-  Int4,
-  Bool,
 
   Count
 };
@@ -45,60 +44,51 @@ enum class GraphicsAPI { None = 0, OpenGL, Vulkan, Metal, DX11, DX12, Count };
 
 enum class BlendMode { None = 0, Alpha, Additive, Count };
 
-inline constexpr u32 GetShaderDataTypeSize(ShaderDataType type) {
+[[nodiscard]]
+constexpr u32 ShaderDataTypeSize(ShaderDataType type) {
   using enum ShaderDataType;
   switch (type) {
-  case Float:
-    return 4;
-  case Float2:
-    return 4 * 2;
-  case Float3:
-    return 4 * 3;
-  case Float4:
-    return 4 * 4;
-  case Mat3:
-    return 4 * 3 * 3;
-  case Mat4:
-    return 4 * 4 * 4;
-  case Int:
-    return 4;
-  case Int2:
-    return 4 * 2;
-  case Int3:
-    return 4 * 3;
-  case Int4:
-    return 4 * 4;
   case Bool:
-    return 1;
+    return sizeof(bool);
+  case Int:
+    return sizeof(i32);
+  case UInt:
+    return sizeof(u32);
+  case Float:
+    return sizeof(f32);
+
+  case Vec2:
+    return sizeof(glm::vec2);
+  case Vec3:
+    return sizeof(glm::vec3);
+  case Vec4:
+    return sizeof(glm::vec4);
+
+  case Mat3:
+    return sizeof(glm::mat3);
+  case Mat4:
+    return sizeof(glm::mat4);
+
   default:
-    UNREACHABLE("Undefined shader data type size");
-    return 0;
+    UNREACHABLE("Undefined shader data type");
   }
+
+  return 0;
 }
 
-inline constexpr u32 GetShaderDataTypeComponentCount(ShaderDataType type) {
+inline constexpr u32 ShaderDataTypeComponentCount(ShaderDataType type) {
   using enum ShaderDataType;
   switch (type) {
   case Float:
     return 1;
   case Float2:
     return 2;
-  case Float3:
-    return 3;
-  case Float4:
-    return 4;
   case Mat3:
     return 3 * 3;
   case Mat4:
     return 4 * 4;
   case Int:
     return 1;
-  case Int2:
-    return 2;
-  case Int3:
-    return 3;
-  case Int4:
-    return 4;
   case Bool:
     return 1;
   default:
