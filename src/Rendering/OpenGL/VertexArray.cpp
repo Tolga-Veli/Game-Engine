@@ -5,19 +5,19 @@
 
 namespace Jupiter::Rendering::OpenGL {
 
-void VertexArray::AddVertexBuffer(const Ref<IVertexBuffer> &vertexBuffer,
-                                  u32 divisor) {
-  CORE_ASSERT(!vertexBuffer->GetLayout().GetElements().empty(),
+void VertexArray::AddVertexBuffer(VertexBuffer &vertexBuffer,
+                                  u32 divisor) noexcept {
+  CORE_ASSERT(!vertexBuffer.GetLayout().GetElements().empty(),
               "Vertex Buffer is empty");
 
   Bind();
-  vertexBuffer->Bind();
+  vertexBuffer.Bind();
 
-  const auto layout = vertexBuffer->GetLayout();
+  const auto layout = vertexBuffer.GetLayout();
   for (const auto &element : layout) {
     const auto &type = element.type;
 
-    u32 cnt = GetShaderDataTypeComponentCount(type);
+    u32 cnt = ShaderDataTypeComponentCount(type);
     if (type == ShaderDataType::Mat3 || type == ShaderDataType::Mat4) {
       u8 columnCount = (type == ShaderDataType::Mat3) ? 3 : 4;
       for (u8 i = 0; i < columnCount; i++) {
@@ -43,14 +43,11 @@ void VertexArray::AddVertexBuffer(const Ref<IVertexBuffer> &vertexBuffer,
         glVertexAttribDivisor(element.location, divisor);
     }
   }
-
-  m_VertexBuffers.push_back(vertexBuffer);
 }
 
-void VertexArray::SetIndexBuffer(const Ref<IIndexBuffer> &indexBuffer) {
+void VertexArray::SetIndexBuffer(IndexBuffer &indexBuffer) noexcept {
   Bind();
-  indexBuffer->Bind();
-  m_IndexBuffer = indexBuffer;
+  indexBuffer.Bind();
 }
 
 } // namespace Jupiter::Rendering::OpenGL

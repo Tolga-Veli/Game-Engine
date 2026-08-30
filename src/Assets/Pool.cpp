@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Pool.hpp"
+#include "Assets/Pool.hpp"
 
 namespace Jupiter::Assets {
 
-template <class T> AssetHandle<T> AssetPool<T>::Reserve() noexcept {
+template <class T> AssetHandle<T> AssetPool<T>::Reserve() {
   u32 idx;
   if (!m_FreeIndices.empty()) {
     idx = m_FreeIndices.back();
@@ -20,7 +20,7 @@ template <class T> AssetHandle<T> AssetPool<T>::Reserve() noexcept {
   return AssetHandle<T>{idx, slot.gen};
 }
 
-template <class T> AssetHandle<T> AssetPool<T>::Insert(Ref<T> value) noexcept {
+template <class T> AssetHandle<T> AssetPool<T>::Insert(Ref<T> value) {
   if (!value)
     return {};
 
@@ -38,7 +38,7 @@ bool AssetPool<T>::Replace(AssetHandle<T> handle, Ref<T> value) noexcept {
   return true;
 }
 
-template <class T> bool AssetPool<T>::Release(AssetHandle<T> handle) noexcept {
+template <class T> bool AssetPool<T>::Release(AssetHandle<T> handle) {
   if (!IsValid(handle))
     return false;
 
@@ -56,7 +56,7 @@ Ref<T> AssetPool<T>::Resolve(AssetHandle<T> handle) noexcept {
   if (!IsValid(handle))
     return {};
 
-  return &m_Slots[handle.GetID()].data;
+  return m_Slots[handle.GetID()].data;
 }
 
 template <class T>

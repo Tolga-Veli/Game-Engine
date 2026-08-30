@@ -1,14 +1,13 @@
-#include "AssetManager.hpp"
-#include "Types.hpp"
+#include "Assets/AssetManager.hpp"
 
 #include "Core/Logging.hpp"
 #include "Core/Assert.hpp"
 
-#include "Traits/TextureTraits.hpp"
-#include "Traits/ShaderTraits.hpp"
-#include "Traits/MeshTraits.hpp"
-#include "Traits/MaterialTraits.hpp"
-#include "Traits/FontTraits.hpp"
+#include "Assets/Traits/TextureTraits.hpp"
+#include "Assets/Traits/ShaderTraits.hpp"
+#include "Assets/Traits/MeshTraits.hpp"
+#include "Assets/Traits/MaterialTraits.hpp"
+#include "Assets/Traits/FontTraits.hpp"
 
 #include <mutex>
 #include <thread>

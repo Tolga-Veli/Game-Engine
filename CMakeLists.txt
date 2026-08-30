@@ -16,15 +16,17 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 set(LIB_DIR "${PROJECT_SOURCE_DIR}/libs")
+set(INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
 set(SRC_DIR "${PROJECT_SOURCE_DIR}/src")
 
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
+    "${INCLUDE_DIR}/*.hpp"
     "${SRC_DIR}/*.cpp"
-    "${SRC_DIR}/*.hpp"
+    "${SRC_DIR}/*.inl"
 )
 
 add_executable(${PROJECT_NAME} ${SRC_FILES})
-target_include_directories(${PROJECT_NAME} PRIVATE "${SRC_DIR}")
+target_include_directories(${PROJECT_NAME} PRIVATE "${INCLUDE_DIR}" "${SRC_DIR}")
 
 #---------------------------
 # GLFW

@@ -2,7 +2,7 @@
 
 #include "Rendering/Backend/RenderUtils.hpp"
 #include "Rendering/Backend/IRenderer.hpp"
-#include "Rendering/RenderQueue.hpp"
+#include "Rendering/Backend/RenderQueue.hpp"
 
 namespace Jupiter::Rendering {
 
@@ -12,7 +12,7 @@ public:
   // Game thread API.
   // ===================================
   static void BeginFrame(const SceneData &sceneData);
-  static void Submit(const RenderCommand &command);
+  static void Submit(const RHI::RenderCommand &command);
   static void EndFrame(); // Blocks until the render thread finishes consuming
                           // the frame - bounds the
                           // game thread to being at most one frame ahead.
@@ -32,7 +32,7 @@ public:
 
 private:
   static GraphicsAPI s_RendererAPI;
-  static Scope<IRenderer> s_RendererImplementation;
+  static Scope<RHI::IRenderer> s_RendererImplementation;
   static RenderQueue s_RenderQueue;
 };
 
