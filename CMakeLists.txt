@@ -27,6 +27,7 @@ file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
 )
 
 list(FILTER SRC_FILES EXCLUDE REGEX ".*/main\\.cpp$")
+
 # Legacy experiments are intentionally kept in the repository, but they are
 # not engine sources and may contain their own main() when enabled.
 list(FILTER SRC_FILES EXCLUDE REGEX ".*/test[0-9]*\\.cpp$")
@@ -82,13 +83,8 @@ target_include_directories(imgui PUBLIC
     "${LIB_DIR}/glfw/include"
 )
 
-# Link against the real targets instead of hardcoding their include paths -
-# glfw/glad already export their own public include dirs, so this stays
-# correct even if their internal layout changes.
 target_link_libraries(imgui PUBLIC glfw glad)
-# Tell imgui_impl_opengl3.cpp we're supplying GLAD2 (gl.h/gl.c naming) as the
-# loader, or it falls back to bundling its own minimal loader and fights
-# GLAD over who owns the GL function pointers.
+
 target_compile_definitions(imgui PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD2)
 
 #---------------------------
