@@ -29,6 +29,7 @@ public:
   // ===================================
   inline static GraphicsAPI GetAPI() { return s_RendererAPI; }
   static void RequestStop();
+  static void Wake();
 
 private:
   static GraphicsAPI s_RendererAPI;

@@ -24,7 +24,8 @@ Application::~Application() {
 }
 
 void Application::Run() {
-  Initialize();
+  if (!Initialize())
+    return;
 
   using Clock = std::chrono::steady_clock;
   auto lastTime = Clock::now();
@@ -36,7 +37,14 @@ void Application::Run() {
 
     ProcessEvents();
 
+    if (!m_Running)
+      break;
+
     OnUpdate(dt);
+
+    if (!m_Running)
+      break;
+
     OnRender(dt);
 
     if (m_Window->ShouldClose())
@@ -48,17 +56,19 @@ void Application::Run() {
 
 void Application::Close() noexcept { m_Running = false; }
 
-void Application::Initialize() {
+bool Application::Initialize() {
   // Render thread owns the Renderer and context and must be responsible for the
   // creation of resources in asset managers
-  InitializeRenderThread();
+  if (!InitializeRenderThread())
+    return false;
 
   OnInit();
 
   m_Running = true;
+  return true;
 }
 
-void Application::InitializeRenderThread() {
+bool Application::InitializeRenderThread() {
   Rendering::RenderThreadHooks hooks;
 
   hooks.Init = [this]() {
@@ -67,29 +77,38 @@ void Application::InitializeRenderThread() {
 
     if (!m_GraphicsContext || !m_GraphicsContext->Init()) {
       LOG_FATAL("Application: graphics context failed to initialize");
-      return;
+      if (m_GraphicsContext) {
+        m_GraphicsContext->Shutdown();
+        m_GraphicsContext.reset();
+      }
+      return false;
     }
 
     Rendering::Renderer::Init();
-    Assets::AssetManager::GetInstance().Init();
+    auto &assets = Assets::AssetManager::GetInstance();
+    assets.SetRendererWakeup([]() { Rendering::Renderer::Wake(); });
+    assets.Init();
 
     OnRenderInit();
+    return true;
   };
 
   hooks.OnFrame = [this]() {
     Assets::AssetManager::GetInstance().ProcessRenderTasks();
     Assets::AssetManager::GetInstance().PollHotReload();
-
-    m_GraphicsContext->OnFrame();
   };
+
+  hooks.Present = [this]() { m_GraphicsContext->OnFrame(); };
 
   hooks.Shutdown = [this]() {
     OnRenderShutdown();
     Assets::AssetManager::GetInstance().Shutdown();
     Rendering::Renderer::Shutdown();
+    m_GraphicsContext->Shutdown();
+    m_GraphicsContext.reset();
   };
 
-  m_RenderThread.Start(std::move(hooks));
+  return m_RenderThread.Start(std::move(hooks));
 }
 
 void Application::Shutdown() {

@@ -8,8 +8,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(JUPITER_BUILD_EXAMPLE "Build the default Jupiter example application" ON)
 
-
-
 # Single-config generators (Makefiles, Ninja) have an empty CMAKE_BUILD_TYPE
 # unless you pass -DCMAKE_BUILD_TYPE explicitly, which silently breaks the
 # $<CONFIG:Debug/Release> generator expressions below (neither J_DEBUG nor
@@ -29,10 +27,16 @@ file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
 )
 
 list(FILTER SRC_FILES EXCLUDE REGEX ".*/main\\.cpp$")
+# Legacy experiments are intentionally kept in the repository, but they are
+# not engine sources and may contain their own main() when enabled.
+list(FILTER SRC_FILES EXCLUDE REGEX ".*/test[0-9]*\\.cpp$")
 
 add_library(JupiterEngine STATIC ${SRC_FILES})
 
-target_include_directories(JupiterEngine PUBLIC "${INCLUDE_DIR}" "${SRC_DIR}")
+target_include_directories(JupiterEngine
+    PUBLIC "${INCLUDE_DIR}"
+    PRIVATE "${SRC_DIR}"
+)
 
 #---------------------------
 # GLFW
@@ -91,16 +95,27 @@ target_compile_definitions(imgui PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD2)
 # OpenGL
 #---------------------------
 find_package(OpenGL REQUIRED)
-target_link_libraries(JupiterEngine PUBLIC glfw glad imgui OpenGL::GL)
+find_package(Threads REQUIRED)
+target_link_libraries(JupiterEngine
+    PUBLIC glfw glad imgui OpenGL::GL Threads::Threads
+)
 
 #---------------------------
 # Compiler warnings + optimization
 #---------------------------
+function(jupiter_enable_warnings target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 /Zc:preprocessor)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -pedantic)
+    endif()
+endfunction()
+
+jupiter_enable_warnings(JupiterEngine)
+
 if(MSVC)
-    target_compile_options(JupiterEngine PRIVATE /W4 /Zc:preprocessor)
     target_compile_options(JupiterEngine PRIVATE $<$<CONFIG:Release>:/O2>)
 else()
-    target_compile_options(JupiterEngine PRIVATE -Wall -Wextra -pedantic)
     target_compile_options(JupiterEngine PRIVATE $<$<CONFIG:Release>:-O3>)
 endif()
 
@@ -132,6 +147,7 @@ if(JUPITER_BUILD_EXAMPLE)
     target_link_libraries(JupiterExample
         PRIVATE JupiterEngine
     )
+    jupiter_enable_warnings(JupiterExample)
 
     set_target_properties(JupiterExample PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
@@ -140,9 +156,6 @@ if(JUPITER_BUILD_EXAMPLE)
     #---------------------------
     # Assets 
     #---------------------------
-
-
-
     add_custom_command(TARGET JupiterExample POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${PROJECT_SOURCE_DIR}/assets"

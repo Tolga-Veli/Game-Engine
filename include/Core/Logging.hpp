@@ -8,7 +8,6 @@
 #include <source_location>
 #include <string_view>
 #include <utility>
-#include <format>
 
 namespace Jupiter::Core {
 enum class LogLevel : u8 { Trace = 0, Debug, Info, Warn, Error, Fatal };
@@ -28,8 +27,9 @@ namespace detail {
   case Error:
     return "ERROR";
   case Fatal:
+    return "FATAL";
   default:
-    return "Unknown";
+    return "UNKNOWN";
   }
 }
 

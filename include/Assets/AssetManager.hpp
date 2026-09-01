@@ -15,6 +15,7 @@
 
 #include <filesystem>
 #include <chrono>
+#include <functional>
 #include <thread>
 #include <mutex>
 #include <shared_mutex>
@@ -70,6 +71,10 @@ public:
   // Must be called by the render thread
   // Processes filesystem changes detected by the watcher thread
   void PollHotReload();
+
+  void SetRendererWakeup(std::function<void()> wakeup) {
+    m_RendererWakeup = std::move(wakeup);
+  }
 
   [[nodiscard]] bool IsRenderThread() const noexcept {
     return std::this_thread::get_id() == m_RenderThreadID;
@@ -154,8 +159,13 @@ private:
   void WatcherThreadMain(std::stop_token stopToken);
 
   void QueueRenderTask(RenderTask task) {
-    std::scoped_lock lock(m_RenderTasksMutex);
-    m_RenderTasks.push_back(std::move(task));
+    {
+      std::scoped_lock lock(m_RenderTasksMutex);
+      m_RenderTasks.push_back(std::move(task));
+    }
+
+    if (m_RendererWakeup)
+      m_RendererWakeup();
   }
 
   template <Asset T>

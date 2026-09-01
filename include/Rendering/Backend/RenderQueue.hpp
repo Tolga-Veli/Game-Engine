@@ -5,6 +5,8 @@
 #include "Rendering/Backend/SceneData.hpp"
 
 #include <condition_variable>
+#include <mutex>
+#include <vector>
 
 namespace Jupiter::Rendering {
 
@@ -24,6 +26,8 @@ public:
   void EndFrame();
 
   void Stop();
+  void Wake();
+  void Reset();
 
   Frame *WaitForFrame();
 
@@ -48,5 +52,6 @@ private:
   std::mutex m_Mutex;
   std::condition_variable m_ReadyCV, m_FreeCV;
   bool m_Stopping{false};
+  bool m_Wakeup{false};
 };
 } // namespace Jupiter::Rendering

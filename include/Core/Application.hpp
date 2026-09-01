@@ -60,8 +60,8 @@ private:
 
   bool m_Running{false};
 
-  void Initialize();
-  void InitializeRenderThread();
+  [[nodiscard]] bool Initialize();
+  [[nodiscard]] bool InitializeRenderThread();
   void Shutdown();
   void ProcessEvents();
 };

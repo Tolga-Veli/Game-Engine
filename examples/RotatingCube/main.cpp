@@ -9,10 +9,15 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 
+#include <cmath>
+#include <string_view>
+
 using namespace Jupiter;
 
 class MyApp final : public Application {
 public:
+  explicit MyApp(bool smokeTest = false) : m_SmokeTest(smokeTest) {}
+
   void OnRenderInit() override {
     GetGraphicsContext().SetVSync(Rendering::RHI::VSyncMode::Off);
 
@@ -64,6 +69,17 @@ public:
   void OnRender(float dt) override {
     m_Time += dt;
 
+    auto shader =
+        Assets::AssetManager::Resolve<Rendering::Shader>(shaderHandle);
+
+    auto mesh = Assets::AssetManager::Resolve<Rendering::Mesh>(meshHandle);
+
+    auto material =
+        Assets::AssetManager::Resolve<Rendering::Material>(materialHandle);
+
+    if (!shader || !mesh || !material)
+      return;
+
     const float redv = std::sin(m_Time) * 0.5f + 0.5f,
                 greenv = std::sin(m_Time * 0.7f) * 0.5f + 0.5f,
                 bluev = std::sin(m_Time * 1.3f) * 0.5f + 0.5f;
@@ -71,6 +87,9 @@ public:
     const glm::vec4 color{redv, greenv, bluev, 1.0f};
 
     const auto [width, height] = GetWindow().GetFramebufferSize();
+    if (width <= 0 || height <= 0)
+      return;
+
     const float aspect = static_cast<float>(width) / height;
 
     const glm::mat4 view = glm::translate(glm::mat4(1.0f),
@@ -85,23 +104,15 @@ public:
     scene.viewProjection = proj * view;
     Rendering::Renderer::BeginFrame(scene);
 
-    auto shader =
-        Assets::AssetManager::Resolve<Rendering::Shader>(shaderHandle);
-
-    auto mesh = Assets::AssetManager::Resolve<Rendering::Mesh>(meshHandle);
-
-    auto material =
-        Assets::AssetManager::Resolve<Rendering::Material>(materialHandle);
-
-    if (!shader || !mesh || !material)
-      return;
-
     material->SetShader(shaderHandle);
     material->Set("uColor", color);
 
     Rendering::Renderer::Submit(
         Rendering::RHI::RenderCommand{mesh, material, model});
     Rendering::Renderer::EndFrame();
+
+    if (m_SmokeTest && ++m_FrameCount >= 120)
+      Close();
   }
 
 private:
@@ -109,11 +120,15 @@ private:
   Assets::AssetHandle<Rendering::Mesh> meshHandle;
   Assets::AssetHandle<Rendering::Material> materialHandle;
 
-  float m_Time;
+  float m_Time{0.0f};
+  u32 m_FrameCount{0};
+  bool m_SmokeTest{false};
 };
 
-int main() {
-  // TODO:: crashes + segfaults when trying to close window
-  MyApp app;
+int main(int argc, char **argv) {
+  const bool smokeTest =
+      argc == 2 && std::string_view(argv[1]) == "--smoke-test";
+
+  MyApp app{smokeTest};
   app.Run();
 }

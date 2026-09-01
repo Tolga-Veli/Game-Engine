@@ -21,6 +21,9 @@ void RenderQueue::EndFrame() {
   Frame *justBuilt = m_Build;
 
   std::unique_lock lock(m_Mutex);
+  if (m_Stopping)
+    return;
+
   m_Ready = justBuilt;
   m_ReadyCV.notify_one();
 
@@ -42,9 +45,33 @@ void RenderQueue::Stop() {
   m_FreeCV.notify_all();
 }
 
+void RenderQueue::Wake() {
+  {
+    std::scoped_lock lock(m_Mutex);
+    m_Wakeup = true;
+  }
+  m_ReadyCV.notify_one();
+}
+
+void RenderQueue::Reset() {
+  std::scoped_lock lock(m_Mutex);
+
+  for (auto &frame : m_Storage)
+    frame.Clear();
+
+  m_Build = &m_Storage[0];
+  m_Ready = nullptr;
+  m_Free = &m_Storage[1];
+  m_Stopping = false;
+  m_Wakeup = false;
+}
+
 Frame *RenderQueue::WaitForFrame() {
   std::unique_lock lock(m_Mutex);
-  m_ReadyCV.wait(lock, [this] { return m_Ready != nullptr || m_Stopping; });
+  m_ReadyCV.wait(
+      lock, [this] { return m_Ready != nullptr || m_Stopping || m_Wakeup; });
+
+  m_Wakeup = false;
 
   if (!m_Ready)
     return nullptr;

@@ -52,10 +52,10 @@ struct WindowOpts {
   bool sRGB = false;
 };
 
-// A plain OS window + input handling. Delibraretly knows nothing about how to
+// A plain OS window + input handling. Deliberately knows nothing about how to
 // render into itself: it hints GLFW with the right client API at creation time
 // (WindowOpts::api) and exposes the native handle via GetNativeHandle(), and
-// that's the entire extent of its rendering-API awareness. Building a gpaphics
+// that's the entire extent of its rendering-API awareness. Building a graphics
 // context on top (OpenGL::GraphicsContext) is the caller's job:
 //
 // auto window =
@@ -69,7 +69,7 @@ struct WindowOpts {
 //  window->PollEvents();
 //
 //  render into the default framebuffer
-//  context->SwapBuffers(); // NOT window->SwapBuffers() - there isnt one
+//  context->SwapBuffers(); // NOT window->SwapBuffers() - there isn't one
 //
 //  Vulkan doesn't have a "swap buffers" concept on the window at all (it
 //  presents via a swapchain the app owns), so that call intentionally lives on

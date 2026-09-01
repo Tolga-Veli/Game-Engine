@@ -6,6 +6,8 @@
 #include "Rendering/Texture2D.hpp"
 #include "Rendering/Sampler.hpp"
 
+#include <variant>
+
 namespace Jupiter::Rendering::RHI {
 enum class ShaderType : u32 {
   None = 0,

@@ -1,6 +1,5 @@
 #include "Rendering/Renderer.hpp"
 #include "Rendering/Material.hpp"
-#include <chrono>
 
 namespace Jupiter::Rendering {
 
@@ -9,11 +8,16 @@ Scope<RHI::IRenderer> Renderer::s_RendererImplementation;
 RenderQueue Renderer::s_RenderQueue{};
 
 void Renderer::Init() {
+  s_RenderQueue.Reset();
   s_RendererImplementation = RHI::IRenderer::Create();
   s_RendererImplementation->Init();
 }
 
 void Renderer::Shutdown() {
+  // Frames retain shared references to GPU resources. Release them while the
+  // graphics context is still current instead of at static destruction time.
+  s_RenderQueue.Reset();
+
   if (!s_RendererImplementation)
     return;
 
@@ -22,7 +26,7 @@ void Renderer::Shutdown() {
 }
 
 bool Renderer::RenderNextFrame() {
-  Frame *frame = s_RenderQueue.TryGetFrame();
+  Frame *frame = s_RenderQueue.WaitForFrame();
   if (!frame)
     return false;
 
@@ -37,6 +41,8 @@ bool Renderer::RenderNextFrame() {
 }
 
 void Renderer::RequestStop() { s_RenderQueue.Stop(); }
+
+void Renderer::Wake() { s_RenderQueue.Wake(); }
 
 void Renderer::BeginFrame(const SceneData &sceneData) {
   s_RenderQueue.BeginFrame(sceneData);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <functional>
 #include <thread>
 
@@ -11,21 +12,27 @@ struct RenderThreadHooks {
   // textures, meshes, materials) gets created - Start() blocks the calling
   // thread until this has finished, so callers can treat render-thread startup
   // as a normal synchronous step
-  std::function<void()> Init;
+  std::function<bool()> Init;
 
   // Shutdown runs once, on the render thread, after the last frame has been
-  // rendererd
+  // rendered.
   std::function<void()> Shutdown;
 
-  // Runs every frame, on the render thread, right after a frame has been
-  // rendererd.
+  // Runs on the render thread before it waits for the next frame. Use this for
+  // queued render-thread work such as asset creation and hot reloads.
   std::function<void()> OnFrame;
+
+  // Runs after a frame has been rendered. Presentation belongs here so the
+  // newly rendered back buffer is the one that gets displayed.
+  std::function<void()> Present;
 };
 
 class RenderThread {
 public:
   // Blocks until hooks.Init has finished running on the render thread
-  void Start(RenderThreadHooks hooks);
+  [[nodiscard]] bool Start(RenderThreadHooks hooks);
+
+  ~RenderThread() { Stop(); }
 
   // Signals the render thread to finish up and joins it.
   void Stop();
@@ -33,7 +40,5 @@ public:
 private:
   std::thread m_Thread;
   std::atomic<bool> m_Stopping{false};
-
-  void Run(RenderThreadHooks hooks);
 };
 } // namespace Jupiter::Rendering

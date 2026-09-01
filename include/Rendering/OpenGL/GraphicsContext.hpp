@@ -47,14 +47,14 @@ public:
     return true;
   }
 
-  void Shutdown() override {}
+  void Shutdown() override {
+    if (glfwGetCurrentContext() == m_Window)
+      glfwMakeContextCurrent(nullptr);
+  }
 
   void SetVSync(RHI::VSyncMode mode) override {
-    CORE_ASSERT(mode != RHI::VSyncMode::Adaptive,
+    CORE_VERIFY(mode != RHI::VSyncMode::Adaptive,
                 "Adaptive VSync is not implemented yet");
-
-    // NOTE: inherited behaviour - requesting Adaptive here falls through the ":
-    // 0" branch (vsync off) once asserts are compiled out in release
 
     glfwSwapInterval(mode == RHI::VSyncMode::On ? 1 : 0);
     m_VSyncMode = mode;

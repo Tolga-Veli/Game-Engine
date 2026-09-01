@@ -78,6 +78,7 @@ void AssetManager::Shutdown() noexcept {
     m_PendingReloads.clear();
   }
 
+  m_RendererWakeup = {};
   m_RenderThreadID = {};
 
   LOG_INFO("AssetManager: Resources cleared");

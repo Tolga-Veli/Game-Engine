@@ -46,7 +46,7 @@ public:
   }
 
   // hot-swaps a slot's payload, keeping the same index and generation. Anyone
-  // holding this handle sees thew new data the next time they call Resolve()
+  // holding this handle sees the new data the next time they call Resolve()
   bool Replace(AssetHandle<T> handle, Ref<T> value) noexcept {
     if (!value || !IsValid(handle))
       return false;
