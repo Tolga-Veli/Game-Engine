@@ -2,6 +2,7 @@
 
 #include "Core/Assert.hpp"
 #include "Rendering/Backend/IGraphicsContext.hpp"
+#include "glm/gtc/type_ptr.hpp"
 
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
@@ -18,13 +19,18 @@ public:
   }
 
   bool Init() override {
+    CORE_ASSERT(m_Window != nullptr, "GLFW window was nullptr");
     glfwMakeContextCurrent(m_Window);
 
     i32 status = gladLoadGL(glfwGetProcAddress);
     if (status == 0) {
-      CORE_VERIFY(false, "GraphicsContext: gladLoadGL failed");
+      LOG_ERROR("GraphicsContext: gladLoadGL failed");
       return false;
     }
+
+    i32 width, height;
+    glfwGetFramebufferSize(m_Window, &width, &height);
+    glViewport(0, 0, width, height);
 
     LOG_INFO("OpenGL Context:");
     LOG_INFO("  Vendor:   {}",
@@ -34,15 +40,14 @@ public:
     LOG_INFO("  Version:  {}",
              reinterpret_cast<const char *>(glGetString(GL_VERSION)));
 
-#ifdef JPT_DEBUG
+#ifdef J_DEBUG
     SetupDebugOutput();
 #endif
 
-    /*    i32 width, height;
-        glfwGetFramebufferSize(m_Window, &width, &height);
-        glViewport(0, 0, width, height);*/
     return true;
   }
+
+  void Shutdown() override {}
 
   void SetVSync(RHI::VSyncMode mode) override {
     CORE_ASSERT(mode != RHI::VSyncMode::Adaptive,
@@ -55,9 +60,9 @@ public:
     m_VSyncMode = mode;
   }
 
-  RHI::VSyncMode SetVSync() const override { return m_VSyncMode; }
+  RHI::VSyncMode GetVSync() const noexcept override { return m_VSyncMode; }
 
-  void SwapBuffers() override { glfwSwapBuffers(m_Window); }
+  void OnFrame() override { glfwSwapBuffers(m_Window); }
 
 #ifdef J_DEBUG
   static void GLAPIENTRY OnGLDebugMessage(GLenum, GLenum type, GLuint,

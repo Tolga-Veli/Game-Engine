@@ -11,16 +11,16 @@ template <> struct AssetTraits<Rendering::Mesh> {
   static constexpr bool IsAsset = true;
 
   using Asset = Rendering::Mesh;
-  using Impl = Rendering::IMesh;
+  using Impl = Rendering::RHI::IMesh;
   using LoadOptions = MeshLoadOptions;
 
   static constexpr AssetType type = AssetType::Mesh;
 
-  [[nodiscard]] static Scope<Impl> Create(const void *vertices, u32 vertexCount,
-                                          u32 vertexStride, const void *indices,
-                                          u32 indexCount) {
-    return Impl::Create(vertices, vertexCount, vertexStride, indices,
-                        indexCount);
+  template <class T>
+  [[nodiscard]] static Scope<Impl>
+  Create(std::span<const T> vertices, std::span<const u32> indices,
+         const Rendering::RHI::BufferLayout &layout) {
+    return Impl::Create(vertices, indices, layout);
   }
 
   [[nodiscard]] static Scope<Impl> LoadFromFile(const fs::path &,

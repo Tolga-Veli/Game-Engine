@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Core/Utils.hpp"
 #include "Rendering/Backend/IRenderer.hpp"
 #include "Rendering/Backend/RenderQueue.hpp"
 
@@ -12,7 +11,7 @@ public:
   // ===================================
   // Game thread API.
   // ===================================
-  static void BeginFrame(const RHI::SceneData &sceneData);
+  static void BeginFrame(const SceneData &sceneData);
   static void Submit(const RHI::RenderCommand &command);
   static void EndFrame(); // Blocks until the render thread finishes consuming
                           // the frame - bounds the
@@ -34,7 +33,7 @@ public:
 private:
   static GraphicsAPI s_RendererAPI;
   static Scope<RHI::IRenderer> s_RendererImplementation;
-  static RHI::RenderQueue s_RenderQueue;
+  static RenderQueue s_RenderQueue;
 };
 
 } // namespace Jupiter::Rendering

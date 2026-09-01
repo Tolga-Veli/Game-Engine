@@ -6,11 +6,11 @@
 
 #include <condition_variable>
 
-namespace Jupiter::Rendering::RHI {
+namespace Jupiter::Rendering {
 
 struct Frame {
   SceneData sceneData;
-  std::vector<RenderCommand> commands;
+  std::vector<RHI::RenderCommand> commands;
 
   void Clear() { commands.clear(); }
 };
@@ -20,12 +20,23 @@ public:
   RenderQueue();
 
   void BeginFrame(const SceneData &sceneData);
-  void Submit(const RenderCommand &command);
+  void Submit(const RHI::RenderCommand &command);
   void EndFrame();
 
   void Stop();
 
   Frame *WaitForFrame();
+
+  Frame *TryGetFrame() {
+    std::scoped_lock lock(m_Mutex);
+
+    if (m_Stopping || !m_Ready)
+      return nullptr;
+
+    Frame *frame = m_Ready;
+    m_Ready = nullptr;
+    return frame;
+  }
 
   void ReleaseFrame(Frame *frame);
 
@@ -38,4 +49,4 @@ private:
   std::condition_variable m_ReadyCV, m_FreeCV;
   bool m_Stopping{false};
 };
-} // namespace Jupiter::Rendering::RHI
+} // namespace Jupiter::Rendering

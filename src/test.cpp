@@ -1,4 +1,4 @@
-#ifdef TEST
+#ifdef TEST1
 #include <print>
 #include <chrono>
 #include <cmath>
@@ -360,7 +360,6 @@ int main() {
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
     glGenBuffers(1, &ibo);
-
     if (!vao || !vbo) {
       std::println("Failed to create OpenGL vertex objects!");
 
@@ -391,7 +390,7 @@ int main() {
   i32 projLoc = glGetUniformLocation(shaderProgram, "uProj");
   i32 colorLoc = glGetUniformLocation(shaderProgram, "uColor");
   if (modelLoc == -1 || viewLoc == -1 || projLoc == -1 || colorLoc == -1) {
-    std::println("Failed to find uniform 'uColor'!");
+    std::println("Failed to find uniforms!");
 
     glDeleteVertexArrays(1, &vao);
     glDeleteBuffers(1, &vbo);

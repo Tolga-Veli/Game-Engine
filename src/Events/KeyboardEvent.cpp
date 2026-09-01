@@ -1,4 +1,4 @@
-#include "KeyboardEvent.hpp"
+#include "Events/KeyboardEvent.hpp"
 
 #include <GLFW/glfw3.h>
 

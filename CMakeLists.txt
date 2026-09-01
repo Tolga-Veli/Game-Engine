@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.20)
-project(JupiterEngine VERSION 1.0 LANGUAGES C CXX)
+project(Jupiter VERSION 1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+option(JUPITER_BUILD_EXAMPLE "Build the default Jupiter example application" ON)
+
 
 
 # Single-config generators (Makefiles, Ninja) have an empty CMAKE_BUILD_TYPE
@@ -25,8 +28,11 @@ file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
     "${SRC_DIR}/*.inl"
 )
 
-add_executable(${PROJECT_NAME} ${SRC_FILES})
-target_include_directories(${PROJECT_NAME} PRIVATE "${INCLUDE_DIR}" "${SRC_DIR}")
+list(FILTER SRC_FILES EXCLUDE REGEX ".*/main\\.cpp$")
+
+add_library(JupiterEngine STATIC ${SRC_FILES})
+
+target_include_directories(JupiterEngine PUBLIC "${INCLUDE_DIR}" "${SRC_DIR}")
 
 #---------------------------
 # GLFW
@@ -47,12 +53,12 @@ target_include_directories(glad PUBLIC "${LIB_DIR}/glad/include")
 #---------------------------
 # GLM 
 #---------------------------
-target_include_directories(${PROJECT_NAME} PRIVATE "${LIB_DIR}/glm")
+target_include_directories(JupiterEngine PUBLIC "${LIB_DIR}/glm")
 
 #---------------------------
 # stb_image 
 #---------------------------
-target_include_directories(${PROJECT_NAME} PRIVATE "${LIB_DIR}/stb")
+target_include_directories(JupiterEngine PUBLIC "${LIB_DIR}/stb")
 
 
 #---------------------------
@@ -85,24 +91,24 @@ target_compile_definitions(imgui PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD2)
 # OpenGL
 #---------------------------
 find_package(OpenGL REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE glfw glad imgui OpenGL::GL)
+target_link_libraries(JupiterEngine PUBLIC glfw glad imgui OpenGL::GL)
 
 #---------------------------
 # Compiler warnings + optimization
 #---------------------------
 if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /W4 /Zc:preprocessor)
-    target_compile_options(${PROJECT_NAME} PRIVATE $<$<CONFIG:Release>:/O2>)
+    target_compile_options(JupiterEngine PRIVATE /W4 /Zc:preprocessor)
+    target_compile_options(JupiterEngine PRIVATE $<$<CONFIG:Release>:/O2>)
 else()
-    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic)
-    target_compile_options(${PROJECT_NAME} PRIVATE $<$<CONFIG:Release>:-O3>)
+    target_compile_options(JupiterEngine PRIVATE -Wall -Wextra -pedantic)
+    target_compile_options(JupiterEngine PRIVATE $<$<CONFIG:Release>:-O3>)
 endif()
 
 
 #---------------------------
 # Build-type defines 
 #---------------------------
-target_compile_definitions(${PROJECT_NAME} PRIVATE 
+target_compile_definitions(JupiterEngine PRIVATE 
     $<$<CONFIG:Debug>:J_DEBUG>
     $<$<CONFIG:Release>:J_RELEASE>
 )
@@ -111,16 +117,36 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 #---------------------------
 # Output
 #---------------------------
-set_target_properties(${PROJECT_NAME} PROPERTIES
+set_target_properties(JupiterEngine PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 
 #---------------------------
-# Assets 
+# Example project 
 #---------------------------
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${PROJECT_SOURCE_DIR}/assets"
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets"
-    COMMENT "Syncing assets to build output..."
-)
+if(JUPITER_BUILD_EXAMPLE)
+    add_executable(JupiterExample
+        "${PROJECT_SOURCE_DIR}/examples/RotatingCube/main.cpp"
+    )
+
+    target_link_libraries(JupiterExample
+        PRIVATE JupiterEngine
+    )
+
+    set_target_properties(JupiterExample PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    )
+
+    #---------------------------
+    # Assets 
+    #---------------------------
+
+
+
+    add_custom_command(TARGET JupiterExample POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${PROJECT_SOURCE_DIR}/assets"
+            "$<TARGET_FILE_DIR:JupiterExample>/assets"
+        COMMENT "Syncing assets to build output..."
+    )
+endif()

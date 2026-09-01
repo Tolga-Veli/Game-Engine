@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Core/Utils.hpp"
 
 namespace Jupiter::Rendering::RHI {

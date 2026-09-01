@@ -2,9 +2,9 @@
 
 #include <glm/glm.hpp>
 
-namespace Jupiter::Rendering::RHI {
+namespace Jupiter::Rendering {
 struct SceneData {
-  glm::mat4 ViewProjectionMatrix;
+  glm::mat4 viewProjection;
 };
 
-} // namespace Jupiter::Rendering::RHI
+} // namespace Jupiter::Rendering

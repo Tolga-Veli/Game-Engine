@@ -128,8 +128,8 @@ void Shader::Reflect() {
     if (shaderType == RHI::ShaderDataType::None)
       continue;
 
-    m_Inputs.push_back(
-        {.name = std::string(name, nameLength), .type = shaderType});
+    m_Inputs.push_back(RHI::ShaderParameter{
+        .name = std::string(name, nameLength), .type = shaderType});
   }
 }
 
@@ -205,23 +205,27 @@ void Shader::Set(std::string_view name, const glm::mat4 &value) {
   glProgramUniformMatrix4fv(m_RendererID, location, 1, GL_FALSE, &value[0][0]);
 }
 
-void Shader::Set(std::string_view name, const RHI::TextureBinding &binding) {
+void Shader::Set(std::string_view, const RHI::TextureBinding &) {
+  CORE_ASSERT(false, "TODO");
+  /* const i32 location = GetUniformLoc(name);
+   if (location == -1)
+     return;
 
-  const i32 location = GetUniformLoc(name);
-  if (location == -1)
+   const u32 slot = AllocateTextureSlot();
+   auto texture = Assets::AssetManager::Resolve<Texture2D>(binding.texture);
+   auto sampler = Assets::AssetManager::Resolve<Sampler>(binding.sampler);
+
+   if (!texture || !sampler){
+    LOG_ERROR("Invalid texture and sampler for binding");
     return;
+   }
 
-  const u32 slot = AllocateTextureSlot();
+   auto &glTexture = static_cast<OpenGL::Texture2D&>(texture->GetImpl());
+   auto &glSampler = static_cast<OpenGL::Sampler&>(texture->GetImpl());
 
-  auto *texture = Assets::AssetManager::Resolve<Texture2D>(binding.texture);
-  auto *sampler = Assets::AssetManager::Resolve<Sampler>(binding.sampler);
+   glTexture.Bind(slot);
+   glSamplerBind(slot);
 
-  if (!texture || !sampler)
-    return;
-
-  texture->Bind(slot);
-  sampler->Bind(slot);
-
-  glProgramUniform1i(m_RendererID, location, slot);
+   glProgramUniform1i(m_RendererID, location, slot);*/
 }
 } // namespace Jupiter::Rendering::OpenGL

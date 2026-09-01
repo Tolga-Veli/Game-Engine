@@ -1,10 +1,6 @@
-#include "Window.hpp"
-
-#include "GLFW/glfw3.h"
-#include "Utils.hpp"
-#include "Assert.hpp"
-
-#include "Rendering/Backend/RenderUtils.hpp"
+#include "Core/Window.hpp"
+#include "Core/Utils.hpp"
+#include "Core/Assert.hpp"
 
 #include "Events/KeyboardEvent.hpp"
 #include "Events/MouseEvent.hpp"

@@ -1,11 +1,12 @@
 #include "Rendering/Renderer.hpp"
 #include "Rendering/Material.hpp"
+#include <chrono>
 
 namespace Jupiter::Rendering {
 
 GraphicsAPI Renderer::s_RendererAPI = GraphicsAPI::OpenGL;
 Scope<RHI::IRenderer> Renderer::s_RendererImplementation;
-RHI::RenderQueue Renderer::s_RenderQueue{};
+RenderQueue Renderer::s_RenderQueue{};
 
 void Renderer::Init() {
   s_RendererImplementation = RHI::IRenderer::Create();
@@ -21,34 +22,23 @@ void Renderer::Shutdown() {
 }
 
 bool Renderer::RenderNextFrame() {
-  RHI::Frame *frame = s_RenderQueue.WaitForFrame();
-
+  Frame *frame = s_RenderQueue.TryGetFrame();
   if (!frame)
     return false;
 
-  s_RendererImplementation->Clear();
-  s_RendererImplementation->BeginScene(frame->sceneData);
+  s_RendererImplementation->BeginFrame(frame->sceneData);
 
-  for (const auto &cmd : frame->commands) {
-    auto shader = cmd.material->Bind();
-
-    if (!shader)
-      continue;
-
-    for (const auto &[name, value] : cmd.overrides)
-      ApplyUniform(*shader, name, value);
-
+  for (const auto &cmd : frame->commands)
     s_RendererImplementation->Submit(cmd);
-  }
 
-  s_RendererImplementation->EndScene();
+  s_RendererImplementation->EndFrame();
   s_RenderQueue.ReleaseFrame(frame);
   return true;
 }
 
 void Renderer::RequestStop() { s_RenderQueue.Stop(); }
 
-void Renderer::BeginFrame(const RHI::SceneData &sceneData) {
+void Renderer::BeginFrame(const SceneData &sceneData) {
   s_RenderQueue.BeginFrame(sceneData);
 }
 

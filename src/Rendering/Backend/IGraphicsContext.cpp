@@ -10,9 +10,9 @@ Scope<IGraphicsContext> IGraphicsContext::Create(GLFWwindow *handle) {
   case GraphicsAPI::OpenGL:
     return CreateScope<OpenGL::GraphicsContext>(handle);
   default:
-    CORE_VERIFY(false, "not implemented yet");
+    UNREACHABLE("Unsupported graphics api");
+    return {};
   }
-  return nullptr;
 }
 
 } // namespace Jupiter::Rendering::RHI

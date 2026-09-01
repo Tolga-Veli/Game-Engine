@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Rendering/Backend/IMaterial.hpp"
-#include "Rendering/Backend/IShader.hpp"
 
 #include <unordered_map>
 #include <string>
@@ -12,7 +11,9 @@ public:
   Material() = default;
   ~Material() override = default;
 
-  void SetShader(Assets::AssetHandle<Shader> shader) override;
+  void SetShader(Assets::AssetHandle<Shader> handle) override {
+    m_ShaderHandle = handle;
+  }
 
   void SetProperty(std::string_view name,
                    const RHI::ShaderParamValue &val) override;
@@ -24,7 +25,7 @@ public:
   void Bind();
 
 private:
-  Assets::AssetHandle<Shader> m_ShaderHandle{};
+  Assets::AssetHandle<Rendering::Shader> m_ShaderHandle{};
   std::unordered_map<std::string, RHI::ShaderParamValue> m_Properties;
 };
 

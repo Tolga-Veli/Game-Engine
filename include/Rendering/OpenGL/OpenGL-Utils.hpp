@@ -37,21 +37,6 @@ inline constexpr GLenum JupiterToOpenGLBaseType(RHI::ShaderDataType type) {
   }
 }
 
-inline constexpr GLenum JupiterToOpenGLBufferUsage(RHI::BufferUsage usage) {
-  using enum RHI::BufferUsage;
-  switch (usage) {
-  case Static:
-    return GL_STATIC_DRAW;
-  case Dynamic:
-    return GL_DYNAMIC_DRAW;
-  case Stream:
-    return GL_STREAM_DRAW;
-  default:
-    UNREACHABLE("Undefined buffer usage");
-    return 0;
-  }
-};
-
 inline constexpr u32 JupiterToOpenGLShaderStage(RHI::ShaderType type) {
   using enum RHI::ShaderType;
   switch (type) {

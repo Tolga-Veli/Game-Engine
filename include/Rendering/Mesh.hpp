@@ -26,6 +26,9 @@ public:
     return m_Impl->GetIndexCount();
   }
 
+  RHI::IMesh &GetImpl() noexcept { return *m_Impl; }
+  const RHI::IMesh &GetImpl() const noexcept { return *m_Impl; }
+
 private:
   Scope<RHI::IMesh> m_Impl;
 

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Types.hpp"
-
 #include <concepts>
 #include <filesystem>
 #include <variant>
@@ -12,6 +10,8 @@ namespace fs = std::filesystem;
 template <class T> struct AssetTraits {
   static constexpr bool IsAsset = false;
 };
+
+template <typename> inline constexpr bool dependent_false = false;
 
 struct FontLoadOptions {
   float size = 16.0f;
@@ -28,7 +28,6 @@ template <class T>
 concept Asset = requires {
   { AssetTraits<T>::IsAsset } -> std::convertible_to<bool>;
   AssetTraits<T>::type;
-  typename AssetTraits<T>::LoadOptions;
 } && AssetTraits<T>::IsAsset;
 
 namespace detail {

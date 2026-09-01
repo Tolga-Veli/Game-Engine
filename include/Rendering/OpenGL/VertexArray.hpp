@@ -39,12 +39,19 @@ public:
 
   void SetIndexBuffer(const Buffer &buff);
 
+  [[nodiscard]] const std::vector<u32> &GetVertexCounts() const noexcept {
+    return m_VertexCounts;
+  }
+
+  [[nodiscard]] u32 GetIndexCount() const noexcept { return m_IndexCount; }
+
   [[nodiscard]]
   u32 GetRendererID() const noexcept {
     return m_RendererID;
   }
 
 private:
-  u32 m_RendererID{};
+  u32 m_RendererID{}, m_NextBinding{}, m_IndexCount{};
+  std::vector<u32> m_VertexCounts;
 };
 } // namespace Jupiter::Rendering::OpenGL

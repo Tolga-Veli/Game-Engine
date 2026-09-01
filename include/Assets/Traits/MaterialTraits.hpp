@@ -8,7 +8,7 @@ template <> struct AssetTraits<Rendering::Material> {
   static constexpr bool IsAsset = true;
 
   using Asset = Rendering::Material;
-  using Impl = Rendering::IMaterial;
+  using Impl = Rendering::RHI::IMaterial;
   using LoadOptions = std::monostate;
 
   static constexpr AssetType type = AssetType::Material;
@@ -16,7 +16,7 @@ template <> struct AssetTraits<Rendering::Material> {
   [[nodiscard]]
   static Scope<Impl>
   Create(Assets::AssetHandle<Rendering::Shader> shader,
-         const std::unordered_map<std::string, Rendering::ShaderParamValue>
+         const std::unordered_map<std::string, Rendering::RHI::ShaderParamValue>
              &properties) {
     auto impl = Impl::Create();
 

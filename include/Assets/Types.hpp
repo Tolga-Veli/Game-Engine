@@ -58,7 +58,7 @@ inline constexpr u64 HashAssetKey(std::string_view path, AssetType type,
   key += ':';
   key += to_string(type);
 
-  auto append = [&](const auto &value) {
+  [[maybe_unused]] auto append = [&](const auto &value) {
     key += ':';
     key += std::to_string(value);
   };

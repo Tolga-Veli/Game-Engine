@@ -2,46 +2,33 @@
 
 #include "Core/Utils.hpp"
 #include "Rendering/Backend/IShader.hpp"
+#include "Rendering/Backend/ShaderTypes.hpp"
+#include "Rendering/Mesh.hpp"
+#include "Rendering/Material.hpp"
 
-#include <type_traits>
 #include <variant>
 
-namespace Jupiter::Rendering::RHI {
-class Mesh;
-class Material;
-
-using UniformValue = std::variant<i32, float, glm::vec3, glm::vec4, glm::mat4>;
+namespace Jupiter::Rendering {
+namespace RHI {
 
 inline void ApplyUniform(IShader &shader, const std::string &name,
-                         const UniformValue &value) {
-  std::visit(
-      [&](const auto &value) {
-        using T = std::decay_t<decltype(value)>;
-        if constexpr (std::is_same_v<T, i32>)
-          shader.SetInt(name, value);
-        else if constexpr (std::is_same_v<T, float>)
-          shader.SetFloat(name, value);
-        else if constexpr (std::is_same_v<T, glm::vec3>)
-          shader.SetVec3(name, value);
-        else if constexpr (std::is_same_v<T, glm::vec4>)
-          shader.SetVec4(name, value);
-        else if constexpr (std::is_same_v<T, glm::mat4>)
-          shader.SetMat4(name, value);
-      },
-      value);
+                         const ShaderParamValue &value) {
+  std::visit([&](const auto &value) { shader.Set(name, value); }, value);
 }
 
 struct RenderCommand {
-  RenderCommand(const Ref<Mesh> &_mesh, const Ref<Material> &mat,
-                const glm::mat4 &t = glm::mat4(1.0f))
-      : mesh(_mesh), material(mat), transform(t) {}
+  RenderCommand(const Ref<Mesh> &_mesh, const Ref<Material> &_material,
+                const glm::mat4 &_transform = glm::mat4(1.0f),
+                u32 _instanceCount = 1)
+      : mesh(_mesh), material(_material), transform(_transform),
+        instanceCount(_instanceCount) {}
 
   Ref<Mesh> mesh;
   Ref<Material> material;
   glm::mat4 transform{1.0f};
-  u32 instanceCount = 1;
+  u32 instanceCount{1};
 
-  std::unordered_map<std::string, UniformValue> overrides;
+  std::unordered_map<std::string, ShaderParamValue> overrides;
 
   RenderCommand &ApplyTransform(const glm::mat4 &t) {
     transform = t;
@@ -53,9 +40,10 @@ struct RenderCommand {
     return *this;
   }
 
-  RenderCommand &ApplyOverride(std::string name, UniformValue value) {
+  RenderCommand &ApplyOverride(std::string name, ShaderParamValue value) {
     overrides.emplace(std::move(name), std::move(value));
     return *this;
   }
 };
-} // namespace Jupiter::Rendering::RHI
+} // namespace RHI
+} // namespace Jupiter::Rendering

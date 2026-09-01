@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/Assert.hpp"
 #include "Rendering/Backend/IShader.hpp"
 
 #include <unordered_map>
@@ -9,11 +10,49 @@
 
 namespace Jupiter::Rendering::OpenGL {
 
+inline RHI::ShaderDataType OpenGLToJupiterShaderDataType(GLenum type) {
+  switch (type) {
+  case GL_FLOAT:
+    return RHI::ShaderDataType::Float;
+
+  case GL_FLOAT_VEC2:
+    return RHI::ShaderDataType::Float2;
+
+  case GL_FLOAT_VEC3:
+    return RHI::ShaderDataType::Float3;
+
+  case GL_FLOAT_VEC4:
+    return RHI::ShaderDataType::Float4;
+
+  case GL_INT:
+    return RHI::ShaderDataType::Int;
+
+  case GL_UNSIGNED_INT:
+    return RHI::ShaderDataType::UInt;
+
+  case GL_FLOAT_MAT3:
+    return RHI::ShaderDataType::Mat3;
+
+  case GL_FLOAT_MAT4:
+    return RHI::ShaderDataType::Mat4;
+
+  case GL_SAMPLER_2D:
+  case GL_SAMPLER_CUBE:
+  default:
+    UNREACHABLE("Unsupported OpenGL shader data type");
+    return RHI::ShaderDataType::None;
+  }
+}
+
 class Shader final : public RHI::IShader {
 public:
   explicit Shader(const ShaderSources &shaderSrcs);
-
   ~Shader() override;
+
+  Shader(const Shader &) = delete;
+  Shader &operator=(const Shader &) = delete;
+  Shader(Shader &&) = delete;
+  Shader &operator=(Shader &&) = delete;
 
   [[nodiscard]]
   std::string_view GetName() const noexcept override {
@@ -29,6 +68,8 @@ public:
 
     std::visit([this, name](const auto &value) { Set(name, value); }, value);
   }
+
+  void Bind() const noexcept { glUseProgram(m_RendererID); }
 
   void Set(std::string_view name, bool value) override;
   void Set(std::string_view name, i32 value) override;

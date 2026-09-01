@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Rendering/Backend/IRenderer.hpp"
-#include "Rendering/Backend/RenderUtils.hpp"
+#include "Rendering/Backend/SceneData.hpp"
 
 #include <glm/glm.hpp>
 #include <glad/gl.h>
@@ -14,17 +14,38 @@ namespace Jupiter::Rendering::OpenGL {
 class Renderer final : public RHI::IRenderer {
 public:
   Renderer() = default;
-  virtual ~Renderer() = default;
+  ~Renderer() = default;
 
-  virtual void Init() override { glEnable(GL_DEPTH_TEST); }
-  virtual void Shutdown() override { delete s_SceneData; }
+  void Init() override {
+    LOG_INFO("Renderer: Initializing Renderer");
 
-  virtual void BeginFrame() override {}
-  virtual void EndFrame() override {}
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
 
-  virtual void Submit(const RHI::RenderCommand &cmd) override;
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glClearColor(0.1f, 0.1f, 0.1f, 0.1f);
+  }
+
+  void SetViewport(i32 x, i32 y, i32 width, i32 height) {
+    glViewport(x, y, width, height);
+  }
+
+  void Shutdown() override { LOG_INFO("Renderer: Shutdown renderer"); }
+
+  void BeginFrame(const SceneData &sceneData) override {
+    m_SceneData = sceneData;
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  }
+
+  void EndFrame() override {}
+
+  void Submit(const RHI::RenderCommand &cmd) override;
 
 private:
-  static RHI::SceneData *s_SceneData;
+  SceneData m_SceneData{};
 };
 } // namespace Jupiter::Rendering::OpenGL

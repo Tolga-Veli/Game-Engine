@@ -1,4 +1,4 @@
-#include "MouseEvent.hpp"
+#include "Events/MouseEvent.hpp"
 
 #include <GLFW/glfw3.h>
 

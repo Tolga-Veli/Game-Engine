@@ -33,5 +33,8 @@ public:
 
   [[nodiscard]]
   virtual u32 GetIndexCount() const noexcept = 0;
+
+protected:
+  IMesh() = default;
 };
 } // namespace Jupiter::Rendering::RHI

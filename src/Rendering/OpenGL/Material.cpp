@@ -1,17 +1,16 @@
-#include "Material.hpp"
+#include "Rendering/OpenGL/Material.hpp"
+#include "Rendering/OpenGL/Shader.hpp"
 
 #include "Assets/AssetManager.hpp"
-#include "Rendering/Backend/IShader.hpp"
+#include "Assets/Traits/ShaderTraits.hpp"
 
 #include <string>
 #include <string_view>
 
 namespace Jupiter::Rendering::OpenGL {
-void Material::SetShader(Assets::AssetHandle<Shader> handle) {
-  m_ShaderHandle = std::move(handle);
-}
 
-void Material::SetProperty(std::string_view name, const ShaderParamValue &val) {
+void Material::SetProperty(std::string_view name,
+                           const RHI::ShaderParamValue &val) {
   m_Properties.insert_or_assign(std::string(name), val);
 }
 
@@ -22,12 +21,15 @@ void Material::RemoveProperty(std::string_view name) {
 void Material::ClearProperties() { m_Properties.clear(); }
 
 void Material::Bind() {
-  auto shader = Assets::AssetManager::Get<Shader>(m_ShaderHandle);
-  shader->Bind();
+  auto shader =
+      Assets::AssetManager::Resolve<Rendering::Shader>(m_ShaderHandle);
+  CORE_ASSERT(shader, "Material: failed to resolve shader");
 
-  u32 textureUnit = 0;
-  for (const auto &[name, val] : m_Properties) {
-    std::visit([&](const auto &value) {}, val);
+  auto &impl = static_cast<OpenGL::Shader &>(shader->GetImpl());
+  impl.Bind();
+
+  for (const auto &[name, value] : m_Properties) {
+    std::visit([&](const auto &value) { impl.Set(name, value); }, value);
   }
 }
 } // namespace Jupiter::Rendering::OpenGL

@@ -1,20 +1,20 @@
-#include "ISampler.hpp"
+#include "Rendering/Backend/ISampler.hpp"
 
 #include "Core/Assert.hpp"
 
 #include "Rendering/Renderer.hpp"
 #include "Rendering/OpenGL/Sampler.hpp"
 
-namespace Jupiter::Rendering {
+namespace Jupiter::Rendering::RHI {
 
-Ref<ISampler> ISampler::Create(const SamplerSpec &spec) {
+Scope<ISampler> ISampler::Create(const SamplerSpec &spec) {
   switch (Renderer::GetAPI()) {
   case GraphicsAPI::OpenGL:
-    return std::make_shared<OpenGL::Sampler>(spec);
+    return CreateScope<OpenGL::Sampler>(spec);
   default:
-    CORE_ASSERT(false, "not implemented yet");
-    return nullptr;
+    UNREACHABLE("Unsupported graphics api");
+    return {};
   }
 }
 
-} // namespace Jupiter::Rendering
+} // namespace Jupiter::Rendering::RHI

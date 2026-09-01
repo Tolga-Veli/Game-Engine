@@ -6,14 +6,14 @@
 
 namespace Jupiter {
 template <typename T> using Ref = std::shared_ptr<T>;
-template <typename T> using Scope = std::unique_ptr<T>;
+template <class T> using Scope = std::unique_ptr<T>;
 
 template <class T, class... Args> Ref<T> CreateRef(Args &&...args) {
-  return std::make_shared<T>(args...);
+  return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
 template <class T, class... Args> Scope<T> CreateScope(Args &&...args) {
-  return std::make_unique<T>(args...);
+  return std::make_unique<T>(std::forward<Args>(args)...);
 }
 
 using u8 = std::uint8_t;

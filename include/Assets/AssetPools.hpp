@@ -1,12 +1,54 @@
 #pragma once
 
-#include "Pool.hpp"
+#include "Assets/Pool.hpp"
+
+#include "Assets/AssetTraits.hpp"
+
+#include "Rendering/Texture2D.hpp"
+#include "Rendering/Shader.hpp"
+#include "Rendering/Material.hpp"
+#include "Rendering/Mesh.hpp"
+#include "Rendering/Font.hpp"
+#include "Rendering/Material.hpp"
 
 namespace Jupiter::Assets {
 class AssetPools {
 public:
-  template <typename T> AssetPool<T> &GetPool() noexcept;
-  template <typename T> const AssetPool<T> &GetPool() const noexcept;
+  template <typename T> AssetPool<T> &GetPool() noexcept {
+    constexpr auto type = AssetTraits<T>::type;
+
+    if constexpr (type == AssetType::Texture)
+      return m_TexturePool;
+    else if constexpr (type == AssetType::Shader)
+      return m_ShaderPool;
+    else if constexpr (type == AssetType::Mesh)
+      return m_MeshPool;
+    else if constexpr (type == AssetType::Font)
+      return m_FontPool;
+    else if constexpr (type == AssetType::Material)
+      return m_MaterialPool;
+    else
+      static_assert(dependent_false<T>,
+                    "No AssetPool registered for this asset type");
+  }
+
+  template <typename T> const AssetPool<T> &GetPool() const noexcept {
+    constexpr auto type = AssetTraits<T>::type;
+
+    if constexpr (type == AssetType::Texture)
+      return m_TexturePool;
+    else if constexpr (type == AssetType::Shader)
+      return m_ShaderPool;
+    else if constexpr (type == AssetType::Mesh)
+      return m_MeshPool;
+    else if constexpr (type == AssetType::Font)
+      return m_FontPool;
+    else if constexpr (type == AssetType::Material)
+      return m_MaterialPool;
+    else
+      static_assert(dependent_false<T>,
+                    "No AssetPool registered for this asset type");
+  }
 
   // WARNING:
   // Must be called on the render thread because Ref<T> destructors may
@@ -20,7 +62,7 @@ public:
   }
 
 private:
-  AssetPool<Rendering::Texture> m_TexturePool;
+  AssetPool<Rendering::Texture2D> m_TexturePool;
   AssetPool<Rendering::Shader> m_ShaderPool;
   AssetPool<Rendering::Mesh> m_MeshPool;
   AssetPool<Rendering::Font> m_FontPool;

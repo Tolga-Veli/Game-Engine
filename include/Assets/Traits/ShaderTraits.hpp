@@ -11,16 +11,18 @@ namespace Jupiter::Assets {
 
 namespace detail {
 
-inline Rendering::ShaderType ShaderTypeFromString(std::string_view type) {
+inline Rendering::RHI::ShaderType ShaderTypeFromString(std::string_view type) {
+  using enum Rendering::RHI::ShaderType;
   if (type == "vertex")
-    return Rendering::ShaderType::Vertex;
+    return Vertex;
   if (type == "fragment")
-    return Rendering::ShaderType::Fragment;
+    return Fragment;
   if (type == "geometry")
-    return Rendering::ShaderType::Geometry;
+    return Geometry;
   if (type == "compute")
-    return Rendering::ShaderType::Compute;
-  return Rendering::ShaderType::None;
+    return Compute;
+  else
+    return None;
 }
 } // namespace detail
 
@@ -28,13 +30,13 @@ template <> struct AssetTraits<Rendering::Shader> {
   static constexpr bool IsAsset = true;
 
   using Asset = Rendering::Shader;
-  using Impl = Rendering::IShader;
+  using Impl = Rendering::RHI::IShader;
   using LoadOptions = std::monostate;
 
   static constexpr AssetType type = AssetType::Shader;
 
   using ShaderSources =
-      std::array<std::string, EnumToSize(Rendering::ShaderType::Count)>;
+      std::array<std::string, EnumToSize(Rendering::RHI::ShaderType::Count)>;
 
   [[nodiscard]]
   static Scope<Impl> Create(const ShaderSources &sources) {
@@ -67,8 +69,9 @@ template <> struct AssetTraits<Rendering::Shader> {
 
       const std::string_view typeName(source.data() + typeStart,
                                       eol - typeStart);
-      const Rendering::ShaderType type = detail::ShaderTypeFromString(typeName);
-      if (type == Rendering::ShaderType::None) {
+      const Rendering::RHI::ShaderType type =
+          detail::ShaderTypeFromString(typeName);
+      if (type == Rendering::RHI::ShaderType::None) {
         LOG_ERROR("Unknown shader type '{}' in '{}'", typeName, path.string());
         return nullptr;
       }

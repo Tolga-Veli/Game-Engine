@@ -21,7 +21,7 @@ Scope<IMesh> IMesh::Create(std::span<const std::byte> vertexData,
     return CreateScope<OpenGL::Mesh>(info);
   default:
     UNREACHABLE("Unsupported graphics api");
-    return nullptr;
+    return {};
   }
 }
 

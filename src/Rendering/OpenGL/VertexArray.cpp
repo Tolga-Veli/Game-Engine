@@ -16,7 +16,7 @@ void VertexArray::AddVertexBuffer(const Buffer &vertexBuffer,
   CORE_ASSERT(vertexBuffer.GetType() == RHI::BufferType::Vertex,
               "Wrong buffer type passed into vertex array");
 
-  u32 binding = 0;
+  const u32 binding = m_NextBinding++;
   glVertexArrayVertexBuffer(m_RendererID, binding, vertexBuffer.GetRendererID(),
                             0, layout.GetStride());
 
@@ -25,19 +25,19 @@ void VertexArray::AddVertexBuffer(const Buffer &vertexBuffer,
 
   for (const auto &element : layout) {
     const auto type = element.type;
-
     if (type == RHI::ShaderDataType::Mat3 ||
         type == RHI::ShaderDataType::Mat4) {
 
-      const u32 cols = type == RHI::ShaderDataType::Mat3 ? 3 : 4;
-      for (u32 col = 0; col < cols; ++col) {
-        const u32 location = element.location + col;
+      const u32 columnCount = type == RHI::ShaderDataType::Mat3 ? 3 : 4;
+      for (u32 column = 0; column < columnCount; ++column) {
+        const u32 location = element.location + column,
+                  offset =
+                      element.offset + sizeof(float) * columnCount * column;
 
         glEnableVertexArrayAttrib(m_RendererID, location);
 
-        glVertexArrayAttribFormat(
-            m_RendererID, location, cols, JupiterToOpenGLBaseType(type),
-            element.normalized, element.offset + sizeof(float) * cols * col);
+        glVertexArrayAttribFormat(m_RendererID, location, columnCount, GL_FLOAT,
+                                  element.normalized, offset);
 
         glVertexArrayAttribBinding(m_RendererID, location, binding);
       }
@@ -49,18 +49,19 @@ void VertexArray::AddVertexBuffer(const Buffer &vertexBuffer,
               count = ShaderDataTypeComponentCount(type);
 
     glEnableVertexArrayAttrib(m_RendererID, location);
-
-    if (type == RHI::ShaderDataType::Int || type == RHI::ShaderDataType::UInt) {
+    if (type == RHI::ShaderDataType::Int || type == RHI::ShaderDataType::UInt)
       glVertexArrayAttribIFormat(m_RendererID, location, count,
                                  JupiterToOpenGLBaseType(type), element.offset);
 
-    } else
+    else
       glVertexArrayAttribFormat(m_RendererID, location, count,
                                 JupiterToOpenGLBaseType(type),
                                 element.normalized, element.offset);
 
     glVertexArrayAttribBinding(m_RendererID, location, binding);
   }
+
+  m_VertexCounts.push_back(vertexBuffer.GetSize() / layout.GetStride());
 }
 
 void VertexArray::SetIndexBuffer(const Buffer &indexBuffer) {
@@ -68,6 +69,8 @@ void VertexArray::SetIndexBuffer(const Buffer &indexBuffer) {
               "Wrong buffer type passed into vertex array");
 
   glVertexArrayElementBuffer(m_RendererID, indexBuffer.GetRendererID());
+
+  m_IndexCount = indexBuffer.GetSize() / sizeof(u32);
 }
 
 } // namespace Jupiter::Rendering::OpenGL

@@ -1,51 +1,64 @@
-#include "Renderer.hpp"
+#include "Rendering/OpenGL/Renderer.hpp"
+#include "Rendering/Backend/RenderCommand.hpp"
+#include "Rendering/OpenGL/Mesh.hpp"
+#include "Rendering/OpenGL/Shader.hpp"
 
-#include "Rendering/Backend/IRenderer.hpp"
-#include "Rendering/Backend/IShader.hpp"
-#include "Rendering/Material.hpp"
-#include "Rendering/Mesh.hpp"
+#include "Assets/AssetManager.hpp"
+#include "Assets/Traits/ShaderTraits.hpp"
+#include "Rendering/Backend/RenderCommand.hpp"
 
 #include <glad/gl.h>
 
 namespace Jupiter::Rendering::OpenGL {
 
-SceneData *Renderer::s_SceneData = nullptr;
-
-void Renderer::Submit(const RenderCommand &cmd) {
+void Renderer::Submit(const RHI::RenderCommand &cmd) {
   if (!cmd.material || !cmd.mesh)
     return;
 
-  // Material::Bind() binds the shader and applies material uniforms
-  Ref<IShader> shader = cmd.material->Bind();
+  const auto shaderHandle = cmd.material->GetShader();
+  if (!shaderHandle.IsValid())
+    return;
+
+  auto shader = Assets::AssetManager::Resolve<Rendering::Shader>(shaderHandle);
   if (!shader)
     return;
 
-  // Apply per-draw uniforms after the material has binded the shader
+  auto &glShader = static_cast<OpenGL::Shader &>(shader->GetImpl());
+  auto &glMesh = static_cast<OpenGL::Mesh &>(cmd.mesh->GetImpl());
+  auto &vao = glMesh.GetVertexArray();
+
+  glShader.Bind();
+  glShader.Set("uViewProjection", m_SceneData.viewProjection);
+  glShader.Set("uModel", cmd.transform);
+
+  for (const auto &[name, value] : cmd.material->GetProperties())
+    ApplyUniform(glShader, name, value);
+
   for (const auto &[name, value] : cmd.overrides)
-    ApplyUniform(*shader, name, value);
+    ApplyUniform(glShader, name, value);
 
-  auto vao = cmd.mesh->GetVertexArray();
-  vao->Bind();
+  vao.Bind();
 
-  const auto &ib = vao->GetIndexBuffer();
-
-  if (ib && ib->GetCount() > 0) {
+  if (vao.GetIndexCount() > 0) {
     if (cmd.instanceCount > 1)
-      glDrawElementsInstanced(GL_TRIANGLES, ib->GetCount(), GL_UNSIGNED_INT,
-                              nullptr, cmd.instanceCount);
+      glDrawElementsInstanced(GL_TRIANGLES, vao.GetIndexCount(),
+                              GL_UNSIGNED_INT, nullptr, cmd.instanceCount);
     else
-      glDrawElements(GL_TRIANGLES, ib->GetCount(), GL_UNSIGNED_INT, nullptr);
-  } else {
-    const auto &vbs = vao->GetVertexBuffers();
-    if (!vbs.empty()) {
-      u32 vertexCount = vbs.front()->GetVertexCount();
+      glDrawElements(GL_TRIANGLES, vao.GetIndexCount(), GL_UNSIGNED_INT,
+                     nullptr);
 
-      if (cmd.instanceCount > 1)
-        glDrawArraysInstanced(GL_TRIANGLES, 0, vertexCount, cmd.instanceCount);
-      else
-        glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-    }
+    return;
   }
+
+  const auto &vertexCounts = vao.GetVertexCounts();
+  if (vertexCounts.empty())
+    return;
+
+  const u32 vertexCount = vertexCounts.front();
+  if (cmd.instanceCount > 1)
+    glDrawArraysInstanced(GL_TRIANGLES, 0, vertexCount, cmd.instanceCount);
+  else
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 }
 
 } // namespace Jupiter::Rendering::OpenGL

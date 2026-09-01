@@ -32,6 +32,7 @@ public:
 
 private:
   std::thread m_Thread;
+  std::atomic<bool> m_Stopping{false};
 
   void Run(RenderThreadHooks hooks);
 };

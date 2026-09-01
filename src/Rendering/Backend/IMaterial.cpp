@@ -2,7 +2,6 @@
 
 #include "Core/Assert.hpp"
 
-#include "Rendering/Backend/RenderUtils.hpp"
 #include "Rendering/Renderer.hpp"
 #include "Rendering/OpenGL/Material.hpp"
 
@@ -12,8 +11,8 @@ Scope<IMaterial> IMaterial::Create() {
   case GraphicsAPI::OpenGL:
     return CreateScope<OpenGL::Material>();
   default:
-    UNREACHABLE("unsupported graphics api");
-    return nullptr;
+    UNREACHABLE("Unsupported graphics api");
+    return {};
   }
 }
 

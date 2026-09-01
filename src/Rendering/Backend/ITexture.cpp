@@ -12,8 +12,8 @@ Scope<ITexture> ITexture::Create(const RHI::TextureCreateSpec &info) {
   case GraphicsAPI::OpenGL:
     return CreateScope<OpenGL::Texture2D>(info);
   default:
-    CORE_ASSERT(false, "IVertexBuffer::Create() Renderer API not implemented");
-    return nullptr;
+    UNREACHABLE("Unuspported graphics api");
+    return {};
   }
 }
 

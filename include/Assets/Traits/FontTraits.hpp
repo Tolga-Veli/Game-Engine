@@ -10,7 +10,7 @@ template <> struct AssetTraits<Rendering::Font> {
   static constexpr bool IsAsset = true;
 
   using Asset = Rendering::Font;
-  using Impl = Rendering::IFont;
+  using Impl = Rendering::RHI::IFont;
   using LoadOptions = FontLoadOptions;
 
   static constexpr AssetType type = AssetType::Font;

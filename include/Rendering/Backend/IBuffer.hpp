@@ -25,6 +25,7 @@ struct BufferDesc {
   BufferType type;
   BufferUsage usage;
   std::size_t size;
+  const void *initData = nullptr;
 };
 
 class IBuffer {

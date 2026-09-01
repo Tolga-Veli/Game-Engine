@@ -12,17 +12,14 @@ class IGraphicsContext {
 public:
   virtual ~IGraphicsContext() = default;
 
-  // Makes the context's resources current / ready to render with. Seperate from
-  // construction so failures (missing driver support, function loader failures,
-  // etc.) can be reported and handled instead of blowing up mid-ctor
-
-  static Scope<IGraphicsContext> Create(GLFWwindow *handle);
+  static Scope<IGraphicsContext> Create(GLFWwindow *nativeWindow);
 
   virtual bool Init() = 0;
+  virtual void Shutdown() = 0;
 
   virtual void SetVSync(VSyncMode mode) = 0;
-  virtual VSyncMode SetVSync() const = 0;
+  virtual VSyncMode GetVSync() const noexcept = 0;
 
-  virtual void SwapBuffers() = 0;
+  virtual void OnFrame() = 0;
 };
 } // namespace Jupiter::Rendering::RHI

@@ -1,2 +1,8 @@
 CompileFlags:
   Add: [-std=c++23]
+
+Index:
+  Background: Skip
+
+If:
+  PathMatch: .*/libs/.*ionDatabase: build

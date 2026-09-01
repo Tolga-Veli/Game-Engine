@@ -5,11 +5,9 @@
 #include <glm/glm.hpp>
 
 namespace Jupiter::Rendering::RHI {
-
 class IShader {
 public:
-  using ShaderSources =
-      const std::array<std::string, EnumToSize(ShaderType::Count)>;
+  using ShaderSources = std::array<std::string, EnumToSize(ShaderType::Count)>;
 
   virtual ~IShader() = default;
 

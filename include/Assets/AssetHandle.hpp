@@ -10,8 +10,13 @@ inline constexpr AssetID k_InvalidAssetIndex =
 
 template <class T> struct AssetHandle {
   constexpr AssetHandle() noexcept = default;
-  constexpr AssetHandle(AssetID id, u32 gen) noexcept
+  constexpr AssetHandle(AssetID id, u64 gen) noexcept
       : m_ID(id), m_Generation(gen) {}
+
+  constexpr AssetHandle(const AssetHandle &) noexcept = default;
+  constexpr AssetHandle &operator=(const AssetHandle &) noexcept = default;
+  constexpr AssetHandle(AssetHandle &&) noexcept = default;
+  constexpr AssetHandle &operator=(AssetHandle &&) noexcept = default;
 
   [[nodiscard]] constexpr bool IsValid() const noexcept {
     return m_ID != k_InvalidAssetIndex;
@@ -23,7 +28,7 @@ template <class T> struct AssetHandle {
   }
 
   [[nodiscard]]
-  constexpr u32 GetGen() const noexcept {
+  constexpr u64 GetGen() const noexcept {
     return m_Generation;
   }
 
@@ -31,7 +36,7 @@ template <class T> struct AssetHandle {
 
 private:
   AssetID m_ID{k_InvalidAssetIndex};
-  u32 m_Generation{};
+  u64 m_Generation{};
 };
 
 } // namespace Jupiter::Assets

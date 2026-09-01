@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Rendering/RenderCommand.hpp"
+#include "Rendering/Backend/RenderCommand.hpp"
 
 namespace Jupiter::Rendering::RHI {
 class ICommandBuffer {

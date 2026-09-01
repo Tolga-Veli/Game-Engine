@@ -1,9 +1,13 @@
 #pragma once
 
 #include "Rendering/Backend/IMaterial.hpp"
-#include "Rendering/Backend/IShader.hpp"
+#include "Rendering/Backend/ShaderTypes.hpp"
 
 #include <unordered_map>
+
+namespace Jupiter::Assets {
+class AssetManager;
+}
 
 namespace Jupiter::Rendering {
 class Material {
@@ -11,12 +15,14 @@ public:
   Material() = delete;
   ~Material() noexcept = default;
 
-  Material(const Material &) = default;
-  Material &operator=(const Material &) = default;
+  Material(const Material &) = delete;
+  Material &operator=(const Material &) = delete;
   Material(Material &&) noexcept = default;
   Material &operator=(Material &&) noexcept = default;
 
   void SetShader(Assets::AssetHandle<Shader> shader) {
+    CORE_ASSERT(shader.IsValid(), "Invalid shader handle");
+    CORE_ASSERT(m_Impl, "m_Impl is a nullptr");
     m_ShaderHandle = shader;
 
     if (m_Impl)
@@ -37,10 +43,10 @@ public:
   // Properties
   // --------------------
   template <class T> void Set(std::string_view name, T &&val) {
-    SetProperty(name, MaterialType(std::forward<T>(val)));
+    SetParameter(name, RHI::ShaderParamValue(std::forward<T>(val)));
   }
 
-  void SetProperty(std::string_view name, const RHI::ShaderParamValue &val) {
+  void SetParameter(std::string_view name, const RHI::ShaderParamValue &val) {
     auto [it, _] = m_Properties.insert_or_assign(std::string(name), val);
 
     if (m_Impl)
@@ -105,8 +111,11 @@ public:
 private:
   Assets::AssetHandle<Shader> m_ShaderHandle;
   std::unordered_map<std::string, RHI::ShaderParamValue> m_Properties;
-  Ref<RHI::IMaterial> m_Impl;
+  Scope<RHI::IMaterial> m_Impl;
 
-  explicit Material(Ref<RHI::IMaterial> impl) : m_Impl(std::move(impl)) {}
+private:
+  friend class Assets::AssetManager;
+
+  explicit Material(Scope<RHI::IMaterial> impl) : m_Impl(std::move(impl)) {}
 };
 } // namespace Jupiter::Rendering

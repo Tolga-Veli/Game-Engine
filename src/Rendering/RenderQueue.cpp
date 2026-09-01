@@ -1,6 +1,4 @@
-#pragma once
-
-#include "RenderQueue.hpp"
+#include "Rendering/Backend/RenderQueue.hpp"
 
 namespace Jupiter::Rendering {
 RenderQueue::RenderQueue() : m_Build(&m_Storage[0]), m_Free(&m_Storage[1]) {}
@@ -15,7 +13,7 @@ void RenderQueue::BeginFrame(const SceneData &sceneData) {
   m_Build->Clear();
 }
 
-void RenderQueue::Submit(const RenderCommand &cmd) {
+void RenderQueue::Submit(const RHI::RenderCommand &cmd) {
   m_Build->commands.push_back(cmd);
 }
 
@@ -28,7 +26,6 @@ void RenderQueue::EndFrame() {
 
   // Wait for the render thread to hand back the other buffer we start
   // building the next frame into it.
-
   m_FreeCV.wait(lock, [this] { return m_Free != nullptr || m_Stopping; });
   if (m_Free) {
     m_Build = m_Free;

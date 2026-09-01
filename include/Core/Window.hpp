@@ -2,8 +2,7 @@
 
 #include "Core/Utils.hpp"
 #include "Events/Event.hpp"
-
-#include "Rendering/Backend/RenderUtils.hpp"
+#include "Rendering/Renderer.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -88,7 +87,7 @@ public:
   Window(Window &&) = delete;
   Window &operator=(Window &&) = delete;
 
-  static Scope<Window> Create(WindowOpts opts = {}) {
+  static Scope<Window> Create(WindowOpts opts) {
     return std::make_unique<Window>(opts);
   }
 

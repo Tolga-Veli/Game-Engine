@@ -14,10 +14,12 @@ public:
       : m_VertexArray(),
         m_VertexBuffer(RHI::BufferDesc{.type = RHI::BufferType::Vertex,
                                        .usage = RHI::BufferUsage::Static,
-                                       .size = info.vertexData.size_bytes()}),
+                                       .size = info.vertexData.size_bytes(),
+                                       .initData = info.vertexData.data()}),
         m_IndexBuffer(RHI::BufferDesc{.type = RHI::BufferType::Index,
                                       .usage = RHI::BufferUsage::Static,
-                                      .size = info.indices.size_bytes()}),
+                                      .size = info.indices.size_bytes(),
+                                      .initData = info.indices.data()}),
         m_Layout(info.layout),
         m_VertexCount(info.vertexData.size_bytes() / info.layout.GetStride()),
         m_IndexCount(info.indices.size()) {
@@ -28,10 +30,6 @@ public:
                 "Mesh vertex layout stride cannot be zero");
     CORE_ASSERT(info.vertexData.size_bytes() % info.layout.GetStride() == 0,
                 "Mesh vertex data size is not a multiple of vertex stride");
-
-    m_VertexBuffer.SetData(info.vertexData.data(),
-                           info.vertexData.size_bytes());
-    m_IndexBuffer.SetData(info.indices.data(), info.indices.size_bytes());
 
     m_VertexArray.AddVertexBuffer(m_VertexBuffer, m_Layout);
     m_VertexArray.SetIndexBuffer(m_IndexBuffer);
