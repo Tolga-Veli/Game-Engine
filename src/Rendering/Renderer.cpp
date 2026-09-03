@@ -1,5 +1,4 @@
 #include "Rendering/Renderer.hpp"
-#include "Rendering/Material.hpp"
 
 namespace Jupiter::Rendering {
 
@@ -48,11 +47,11 @@ void Renderer::BeginFrame(const SceneData &sceneData) {
   s_RenderQueue.BeginFrame(sceneData);
 }
 
-void Renderer::Submit(const RHI::RenderCommand &cmd) {
+void Renderer::Submit(RHI::RenderCommand cmd) {
   if (!cmd.mesh || !cmd.material)
     return;
 
-  s_RenderQueue.Submit(cmd);
+  s_RenderQueue.Submit(std::move(cmd));
 }
 
 void Renderer::EndFrame() { s_RenderQueue.EndFrame(); }

@@ -2,6 +2,7 @@
 
 #include "Core/Utils.hpp"
 #include "Rendering/Backend/BufferLayout.hpp"
+#include "Rendering/Backend/IBuffer.hpp"
 
 #include <span>
 
@@ -10,6 +11,8 @@ struct MeshCreateInfo {
   std::span<const std::byte> vertexData;
   std::span<const u32> indices;
   BufferLayout layout;
+  BufferUsage usage{BufferUsage::Static};
+  std::size_t vertexCapacity{};
 };
 
 class IMesh {
@@ -19,6 +22,10 @@ public:
   static Scope<IMesh> Create(std::span<const std::byte> vertexData,
                              std::span<const u32> indices,
                              const BufferLayout &layout);
+
+  static Scope<IMesh> CreateDynamic(std::size_t vertexCapacity,
+                                    std::span<const u32> indices,
+                                    const BufferLayout &layout);
 
   template <typename T>
   static Scope<IMesh> Create(std::span<const T> vertices,
@@ -33,6 +40,8 @@ public:
 
   [[nodiscard]]
   virtual u32 GetIndexCount() const noexcept = 0;
+
+  virtual void SetVertexData(std::span<const std::byte> data) = 0;
 
 protected:
   IMesh() = default;

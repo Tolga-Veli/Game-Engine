@@ -41,65 +41,31 @@ out vec4 FragColor;
 void main()
 {
     float dist = length(v_LocalPos);
-
     if (dist > 1.0)
         discard;
 
     float z = sqrt(max(0.0, 1.0 - dist * dist));
-
     vec3 normal = vec3(v_LocalPos.x, v_LocalPos.y, z);
-
-    // Speed-based palette
     float speed = clamp(v_Speed / max(u_MaxSpeed,0.001), 0.0, 1.0);
-
     vec3 slowColor = vec3(1.0, 0.18, 0.025);
     vec3 fastColor = vec3(0.12, 0.45, 1.0);
-
     vec3 baseColor = mix(slowColor, fastColor, speed);
     baseColor *= u_ColorTint;
 
-    // Fake directional sun
     vec3 lightDir = normalize(vec3(-0.45, 0.35, 1.0));
     float diffuse = max(dot(normal,lightDir), 0.0);
-
-    // Soft ambient illumination so the dark side isn't completely black.
-    float ambient = 0.12;
-
-    float lightning = ambient + diffuse * 0.88;
-
-    // Atmosphetric rim
-    float rim = 1.0 - normal.z;
-    rim = pow(clamp(rim,0.0,1.0), 2.5);
+    float lightning = 0.12 + diffuse * 0.88;
+    float rim = pow(clamp(1.0 - normal.z,0.0,1.0), 2.5);
     float atmosphere = rim * smoothstep(0.25, 0.85, dist);
-
-    // Procedural surface variation
-    // Cheap multi-frequency noise-like pattern usig sin()
-    // This gives the surface some visual structure without textures
-
-    // Keep variation subtle
     float surfaceFactor = 0.95 + 0.05 * normal.y;
-
-    // Core lightning
     vec3 surfaceColor = baseColor * lightning * surfaceFactor;
-
-    // Hot core
     float core = 1.0 - smoothstep(0.0, 0.62, dist);
     surfaceColor += baseColor * core * 0.35;
-
-    // Atmospheric glow
     vec3 atmosphereColor = mix(vec3(0.15,0.4,1.0), baseColor, 0.65);
     surfaceColor += atmosphereColor * atmosphere * 0.7 * u_GlowIntensity;
-
-    // Outer glow
-    float glow = 1.0 - smoothstep(0.35, 1.0, dist);
-    glow = pow(glow, 2.0);
-
-    float pulse = 1.0 + 0.04 * sin(u_Time * 2.0);
-    surfaceColor *= pulse;
-    
-    // Alpha
+    float glow = pow(1.0 - smoothstep(0.35, 1.0, dist), 2.0);
+    surfaceColor *= 1.0 + 0.04 * sin(u_Time * 2.0);
     float alpha = smoothstep(1.0, 0.75, dist);
     alpha = max(alpha, glow * 0.35);
-
     FragColor = vec4(surfaceColor, alpha);
 }

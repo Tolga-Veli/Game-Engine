@@ -22,7 +22,7 @@ public:
   RenderQueue();
 
   void BeginFrame(const SceneData &sceneData);
-  void Submit(const RHI::RenderCommand &command);
+  void Submit(RHI::RenderCommand command);
   void EndFrame();
 
   void Stop();
@@ -46,12 +46,10 @@ public:
 
 private:
   Frame m_Storage[2];
-
   Frame *m_Build{}, *m_Ready{}, *m_Free{};
 
   std::mutex m_Mutex;
   std::condition_variable m_ReadyCV, m_FreeCV;
-  bool m_Stopping{false};
-  bool m_Wakeup{false};
+  bool m_Stopping{false}, m_Wakeup{false};
 };
 } // namespace Jupiter::Rendering

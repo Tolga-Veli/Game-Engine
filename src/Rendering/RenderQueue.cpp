@@ -13,8 +13,8 @@ void RenderQueue::BeginFrame(const SceneData &sceneData) {
   m_Build->Clear();
 }
 
-void RenderQueue::Submit(const RHI::RenderCommand &cmd) {
-  m_Build->commands.push_back(cmd);
+void RenderQueue::Submit(RHI::RenderCommand cmd) {
+  m_Build->commands.push_back(std::move(cmd));
 }
 
 void RenderQueue::EndFrame() {

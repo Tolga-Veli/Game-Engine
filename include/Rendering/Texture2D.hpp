@@ -33,6 +33,8 @@ public:
     return m_Impl != nullptr;
   }
 
+  [[nodiscard]] RHI::ITexture &GetImpl() noexcept { return *m_Impl; }
+
 private:
   Scope<RHI::ITexture> m_Impl;
 

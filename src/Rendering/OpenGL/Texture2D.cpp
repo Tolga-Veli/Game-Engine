@@ -20,6 +20,11 @@ Texture2D::Texture2D(const RHI::TextureCreateSpec &info) noexcept
                      JupiterToOpenGLInternalFormat(info.format), info.width,
                      info.height);
 
+  glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
   glTextureSubImage2D(m_RendererID, 0, 0, 0, info.width, info.height,

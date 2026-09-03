@@ -38,6 +38,9 @@ public:
 
   void BeginFrame(const SceneData &sceneData) override {
     m_SceneData = sceneData;
+    if (sceneData.framebufferSize.x > 0 && sceneData.framebufferSize.y > 0)
+      glViewport(0, 0, sceneData.framebufferSize.x,
+                 sceneData.framebufferSize.y);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   }
 

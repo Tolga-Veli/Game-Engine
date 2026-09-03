@@ -12,7 +12,7 @@ public:
   // Game thread API.
   // ===================================
   static void BeginFrame(const SceneData &sceneData);
-  static void Submit(const RHI::RenderCommand &command);
+  static void Submit(RHI::RenderCommand command);
   static void EndFrame(); // Blocks until the render thread finishes consuming
                           // the frame - bounds the
                           // game thread to being at most one frame ahead.

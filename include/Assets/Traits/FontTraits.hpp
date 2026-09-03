@@ -1,8 +1,10 @@
 #pragma once
 
-#include "Core/Assert.hpp"
+#include "Assets/Types.hpp"
 #include "Assets/AssetTraits.hpp"
+
 #include "Rendering/Font.hpp"
+#include "Data/FileStream.hpp"
 
 namespace Jupiter::Assets {
 
@@ -21,10 +23,12 @@ template <> struct AssetTraits<Rendering::Font> {
     return Impl::Create(data, fontSize, pixelHeight);
   }
 
-  [[nodiscard]] static Scope<Impl> LoadFromFile(const fs::path &,
-                                                const LoadOptions &) {
-    // TODO:
-    UNREACHABLE("TODO:");
+  [[nodiscard]] static Scope<Impl> LoadFromFile(const fs::path &path,
+                                                const LoadOptions &opts) {
+    const std::string data = Data::ReadFile(path);
+    if (data.empty())
+      return nullptr;
+    return Create(data.data(), data.size(), opts.size);
   }
 
   static AssetID MakeID(const fs::path &path, const LoadOptions &opts) {

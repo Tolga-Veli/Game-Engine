@@ -5,8 +5,10 @@
 #include "Rendering/Backend/ShaderTypes.hpp"
 #include "Rendering/Mesh.hpp"
 #include "Rendering/Material.hpp"
+#include "Rendering/Texture2D.hpp"
 
 #include <variant>
+#include <vector>
 
 namespace Jupiter::Rendering {
 namespace RHI {
@@ -25,8 +27,13 @@ struct RenderCommand {
 
   Ref<Mesh> mesh;
   Ref<Material> material;
+  Ref<Texture2D> texture;
+
   glm::mat4 transform{1.0f};
-  u32 instanceCount{1};
+  u32 instanceCount{1}, elementCount{};
+
+  std::vector<std::byte> vertexData, instanceData;
+  bool alphaBlend{false}, depthTest{true};
 
   std::unordered_map<std::string, ShaderParamValue> overrides;
 
@@ -39,9 +46,41 @@ struct RenderCommand {
     instanceCount = count;
     return *this;
   }
+  RenderCommand &SetElementCount(u32 count) {
+    elementCount = count;
+    return *this;
+  }
 
   RenderCommand &ApplyOverride(std::string name, ShaderParamValue value) {
     overrides.emplace(std::move(name), std::move(value));
+    return *this;
+  }
+
+  template <typename T> RenderCommand &UploadVertices(std::span<const T> data) {
+    const auto bytes = std::as_bytes(data);
+    vertexData.assign(bytes.begin(), bytes.end());
+    return *this;
+  }
+
+  template <typename T>
+  RenderCommand &UploadInstances(std::span<const T> data) {
+    const auto bytes = std::as_bytes(data);
+    instanceData.assign(bytes.begin(), bytes.end());
+    return *this;
+  }
+
+  RenderCommand &EnableAlphaBlend() {
+    alphaBlend = true;
+    return *this;
+  }
+
+  RenderCommand &DisableDepthTest() {
+    depthTest = false;
+    return *this;
+  }
+
+  RenderCommand &BindTexture(Ref<Texture2D> value) {
+    texture = std::move(value);
     return *this;
   }
 };

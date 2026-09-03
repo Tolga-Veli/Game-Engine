@@ -11,7 +11,21 @@ void AssetManager::Init() {
   m_RenderThreadID = std::this_thread::get_id();
 
   const fs::path base = fs::current_path();
-  const fs::path assetsDir = base / "assets";
+  fs::path assetsDir = base / "assets";
+  if (!fs::is_directory(assetsDir)) {
+    // Running an example from the CMake build directory is common; assets are
+    // copied next to the executable in build/bin/assets.
+    const fs::path buildAssets = base / "bin" / "assets";
+    if (fs::is_directory(buildAssets))
+      assetsDir = buildAssets;
+  }
+#ifdef JUPITER_SOURCE_ASSET_DIR
+  if (!fs::is_directory(assetsDir)) {
+    const fs::path sourceAssets = JUPITER_SOURCE_ASSET_DIR;
+    if (fs::is_directory(sourceAssets))
+      assetsDir = sourceAssets;
+  }
+#endif
   if (!fs::exists(assetsDir) || !fs::is_directory(assetsDir)) {
     LOG_ERROR("AssetManager: FAILED to find assets folder at '{}'",
               assetsDir.string());

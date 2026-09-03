@@ -37,9 +37,16 @@ inline RHI::ShaderDataType OpenGLToJupiterShaderDataType(GLenum type) {
     return RHI::ShaderDataType::Mat4;
 
   case GL_SAMPLER_2D:
+    return RHI::ShaderDataType::Texture2D;
+
   case GL_SAMPLER_CUBE:
+    // Cubemap resources are not represented by the RHI yet. Reflection must
+    // not crash merely because a shader contains an unsupported uniform.
+    return RHI::ShaderDataType::None;
+
   default:
-    UNREACHABLE("Unsupported OpenGL shader data type");
+    // Reflection is descriptive, not a validation step. Types that are not
+    // exposed by ShaderParamValue are safely omitted from the material UI.
     return RHI::ShaderDataType::None;
   }
 }
@@ -70,6 +77,9 @@ public:
   }
 
   void Bind() const noexcept { glUseProgram(m_RendererID); }
+  [[nodiscard]] bool HasUniform(std::string_view name) const noexcept {
+    return glGetUniformLocation(m_RendererID, std::string{name}.c_str()) != -1;
+  }
 
   void Set(std::string_view name, bool value) override;
   void Set(std::string_view name, i32 value) override;

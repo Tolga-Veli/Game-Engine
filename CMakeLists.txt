@@ -7,6 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(JUPITER_BUILD_EXAMPLE "Build the default Jupiter example application" ON)
+option(JUPITER_BUILD_PLANET_EXAMPLE "Build the planet simulation example" ON)
 
 # Single-config generators (Makefiles, Ninja) have an empty CMAKE_BUILD_TYPE
 # unless you pass -DCMAKE_BUILD_TYPE explicitly, which silently breaks the
@@ -115,11 +116,28 @@ else()
     target_compile_options(JupiterEngine PRIVATE $<$<CONFIG:Release>:-O3>)
 endif()
 
+if(JUPITER_BUILD_PLANET_EXAMPLE)
+    add_executable(PlanetRendererExample
+        "${PROJECT_SOURCE_DIR}/examples/PlanetRenderer/main.cpp"
+        "${PROJECT_SOURCE_DIR}/examples/PlanetRenderer/PlanetRenderer.cpp"
+        "${PROJECT_SOURCE_DIR}/examples/PlanetRenderer/Simulation.cpp")
+    target_link_libraries(PlanetRendererExample PRIVATE JupiterEngine)
+    target_include_directories(PlanetRendererExample PRIVATE "${PROJECT_SOURCE_DIR}/examples/PlanetRenderer")
+    jupiter_enable_warnings(PlanetRendererExample)
+    set_target_properties(PlanetRendererExample PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    add_custom_command(TARGET PlanetRendererExample POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${PROJECT_SOURCE_DIR}/assets"
+            "$<TARGET_FILE_DIR:PlanetRendererExample>/assets")
+endif()
+
 
 #---------------------------
 # Build-type defines 
 #---------------------------
 target_compile_definitions(JupiterEngine PRIVATE 
+    JUPITER_SOURCE_ASSET_DIR="${PROJECT_SOURCE_DIR}/assets"
     $<$<CONFIG:Debug>:J_DEBUG>
     $<$<CONFIG:Release>:J_RELEASE>
 )

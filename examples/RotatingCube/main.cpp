@@ -100,7 +100,7 @@ public:
     const glm::mat4 model = glm::rotate(
         glm::mat4(1.0f), m_Time, glm::normalize(glm::vec3{0.5f, 1.0f, 0.25f}));
 
-    Rendering::SceneData scene{};
+    Rendering::SceneData scene{.framebufferSize = {width, height}};
     scene.viewProjection = proj * view;
     Rendering::Renderer::BeginFrame(scene);
 
