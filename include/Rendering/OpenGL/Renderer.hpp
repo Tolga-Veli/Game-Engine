@@ -26,8 +26,6 @@ public:
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    glClearColor(0.1f, 0.1f, 0.1f, 0.1f);
   }
 
   void SetViewport(i32 x, i32 y, i32 width, i32 height) {
@@ -41,6 +39,10 @@ public:
     if (sceneData.framebufferSize.x > 0 && sceneData.framebufferSize.y > 0)
       glViewport(0, 0, sceneData.framebufferSize.x,
                  sceneData.framebufferSize.y);
+
+    glClearColor(sceneData.clearColor.r, sceneData.clearColor.g,
+                 sceneData.clearColor.b, sceneData.clearColor.a);
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   }
 

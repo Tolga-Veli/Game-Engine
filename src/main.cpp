@@ -5,6 +5,6 @@ class MyApp : public Jupiter::Application {
 };
 
 int main() {
-  auto app = Jupiter::Application::Create();
-  app->Run();
+  MyApp app;
+  app.Run();
 }

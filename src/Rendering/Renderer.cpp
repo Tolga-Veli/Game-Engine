@@ -34,6 +34,9 @@ bool Renderer::RenderNextFrame() {
   for (const auto &cmd : frame->commands)
     s_RendererImplementation->Submit(cmd);
 
+  for (const auto &overlay : frame->overlays)
+    overlay();
+
   s_RendererImplementation->EndFrame();
   s_RenderQueue.ReleaseFrame(frame);
   return true;
@@ -52,6 +55,11 @@ void Renderer::Submit(RHI::RenderCommand cmd) {
     return;
 
   s_RenderQueue.Submit(std::move(cmd));
+}
+
+void Renderer::SubmitOverlay(std::function<void()> overlay) {
+  if (overlay)
+    s_RenderQueue.SubmitOverlay(std::move(overlay));
 }
 
 void Renderer::EndFrame() { s_RenderQueue.EndFrame(); }

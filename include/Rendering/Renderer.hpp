@@ -3,6 +3,8 @@
 #include "Rendering/Backend/IRenderer.hpp"
 #include "Rendering/Backend/RenderQueue.hpp"
 
+#include <functional>
+
 namespace Jupiter::Rendering {
 enum class GraphicsAPI { None = 0, OpenGL, Vulkan, Metal, DX11, DX12, Count };
 
@@ -13,6 +15,8 @@ public:
   // ===================================
   static void BeginFrame(const SceneData &sceneData);
   static void Submit(RHI::RenderCommand command);
+  // Runs on the render thread after scene commands and before presentation.
+  static void SubmitOverlay(std::function<void()> overlay);
   static void EndFrame(); // Blocks until the render thread finishes consuming
                           // the frame - bounds the
                           // game thread to being at most one frame ahead.

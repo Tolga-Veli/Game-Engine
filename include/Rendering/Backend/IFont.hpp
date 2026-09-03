@@ -7,10 +7,7 @@
 namespace Jupiter::Rendering::RHI {
 class IFont {
 public:
-  struct Glyph {
-    glm::vec2 uvMin{}, uvMax{}, size{}, bearing{};
-    float advance{};
-  };
+  struct Glyph {};
 
   virtual ~IFont() = default;
 

@@ -17,6 +17,10 @@ void RenderQueue::Submit(RHI::RenderCommand cmd) {
   m_Build->commands.push_back(std::move(cmd));
 }
 
+void RenderQueue::SubmitOverlay(std::function<void()> overlay) {
+  m_Build->overlays.push_back(std::move(overlay));
+}
+
 void RenderQueue::EndFrame() {
   Frame *justBuilt = m_Build;
 

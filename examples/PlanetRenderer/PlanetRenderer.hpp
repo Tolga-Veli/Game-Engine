@@ -5,7 +5,6 @@
 #include "Rendering/Mesh.hpp"
 #include "Rendering/Material.hpp"
 
-#include <chrono>
 #include <glm/glm.hpp>
 
 using namespace Jupiter;
@@ -19,8 +18,6 @@ class PlanetRenderer {
 public:
   PlanetRenderer() = default;
   explicit PlanetRenderer(u32 maxPlanets) : m_Planets(maxPlanets) { Init(); }
-
-  void SetMaxPlanets(u32 count) { m_Planets.resize(count); }
 
   void Init();
 
@@ -38,6 +35,7 @@ private:
   Assets::AssetHandle<Rendering::Material> m_Material;
   std::vector<RenderPlanetInfo> m_Planets;
 
-  std::chrono::steady_clock::time_point m_StartTime;
+  float m_RadiusScale{2.0f}, m_MaxSpeed{50.0f}, m_GlowIntensity{1.0f};
+  glm::vec3 m_ColorTint{1.0f};
   bool m_MaterialReady{};
 };

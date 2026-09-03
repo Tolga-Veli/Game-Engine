@@ -5,6 +5,7 @@
 #include "Rendering/Backend/SceneData.hpp"
 
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <vector>
 
@@ -13,8 +14,12 @@ namespace Jupiter::Rendering {
 struct Frame {
   SceneData sceneData;
   std::vector<RHI::RenderCommand> commands;
+  std::vector<std::function<void()>> overlays;
 
-  void Clear() { commands.clear(); }
+  void Clear() {
+    commands.clear();
+    overlays.clear();
+  }
 };
 
 class RenderQueue {
@@ -23,6 +28,7 @@ public:
 
   void BeginFrame(const SceneData &sceneData);
   void Submit(RHI::RenderCommand command);
+  void SubmitOverlay(std::function<void()> overlay);
   void EndFrame();
 
   void Stop();
