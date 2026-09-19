@@ -64,6 +64,18 @@ void VertexArray::AddVertexBuffer(const Buffer &vertexBuffer,
   m_VertexCounts.push_back(vertexBuffer.GetSize() / layout.GetStride());
 }
 
+void VertexArray::ReplaceVertexBuffer(u32 binding, const Buffer &vertexBuffer,
+                                      const RHI::BufferLayout &layout) {
+  CORE_ASSERT(binding < m_NextBinding, "Vertex buffer binding does not exist");
+  CORE_ASSERT(vertexBuffer.GetType() == RHI::BufferType::Vertex,
+              "Wrong buffer type passed into vertex array");
+
+  glVertexArrayVertexBuffer(m_RendererID, binding,
+                            vertexBuffer.GetRendererID(), 0,
+                            layout.GetStride());
+  m_VertexCounts[binding] = vertexBuffer.GetSize() / layout.GetStride();
+}
+
 void VertexArray::SetIndexBuffer(const Buffer &indexBuffer) {
   CORE_ASSERT(indexBuffer.GetType() == RHI::BufferType::Index,
               "Wrong buffer type passed into vertex array");

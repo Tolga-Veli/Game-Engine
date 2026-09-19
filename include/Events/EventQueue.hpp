@@ -1,8 +1,7 @@
+#ifdef HERE
 #pragma once
 
 #include "Event.hpp"
-
-#include <type_traits>
 
 namespace Jupiter::Core {
 class EventQueue {
@@ -17,3 +16,4 @@ public:
   std::vector<Event> m_Queue;
 };
 } // namespace Jupiter::Core
+#endif

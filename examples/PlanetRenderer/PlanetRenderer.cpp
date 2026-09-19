@@ -57,8 +57,10 @@ void PlanetRenderer::Draw(std::span<const glm::vec2> positions,
     m_MaterialReady = true;
   }
 
-  const u32 count = std::min(
-      {positions.size(), velocities.size(), radii.size(), m_Planets.size()});
+  const std::size_t count =
+      std::min({positions.size(), velocities.size(), radii.size()});
+  m_Planets.resize(count);
+
   for (std::size_t i{0}; i < count; i++) {
     m_Planets[i].pos = positions[i];
     m_Planets[i].vel = velocities[i];
@@ -66,7 +68,7 @@ void PlanetRenderer::Draw(std::span<const glm::vec2> positions,
   }
 
   auto command = Rendering::RHI::RenderCommand{mesh, material}
-                     .SetInstances(count)
+                     .SetInstances(static_cast<u32>(count))
                      .EnableAlphaBlend()
                      .ApplyOverride("u_ViewProjection", viewProjection)
                      .ApplyOverride("u_RadiusScale", m_RadiusScale)

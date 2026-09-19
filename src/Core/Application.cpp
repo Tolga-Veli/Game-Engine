@@ -93,7 +93,7 @@ bool Application::InitializeRenderThread() {
     return true;
   };
 
-  hooks.OnFrame = [this]() {
+  hooks.OnFrame = []() {
     Assets::AssetManager::GetInstance().ProcessRenderTasks();
     Assets::AssetManager::GetInstance().PollHotReload();
   };
@@ -122,10 +122,11 @@ void Application::ProcessEvents() { m_Window->PollEvents(); }
 void Application::OnEvent(Core::Event &event) {
   Core::EventDispatcher dispatcher(event);
 
-  dispatcher.Dispatch<Core::WindowCloseEvent>([this](Core::WindowCloseEvent &) {
-    Close();
-    return true;
-  });
+  dispatcher.Dispatch<Core::WindowCloseEvent>(
+      [this](Core::WindowCloseEvent &) -> bool {
+        Close();
+        return true;
+      });
 }
 
 } // namespace Jupiter

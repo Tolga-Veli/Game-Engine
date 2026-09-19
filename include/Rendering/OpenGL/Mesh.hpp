@@ -48,22 +48,28 @@ public:
   }
 
   void SetInstanceData(std::span<const std::byte> data) {
+    const RHI::BufferLayout layout{
+        {RHI::ShaderDataType::Float2, "position", 1},
+        {RHI::ShaderDataType::Float2, "velocity", 2},
+        {RHI::ShaderDataType::Float, "radius", 3}};
+
     if (!m_InstanceBuffer) {
       m_InstanceBuffer = std::make_unique<Buffer>(
           RHI::BufferDesc{.type = RHI::BufferType::Vertex,
                           .usage = RHI::BufferUsage::Dynamic,
                           .size = data.size_bytes()});
-
-      const RHI::BufferLayout layout{
-          {RHI::ShaderDataType::Float2, "position", 1},
-          {RHI::ShaderDataType::Float2, "velocity", 2},
-          {RHI::ShaderDataType::Float, "radius", 3}};
-
       m_VertexArray.AddVertexBuffer(*m_InstanceBuffer, layout, 1);
+    } else if (data.size_bytes() > m_InstanceBuffer->GetSize()) {
+      const std::size_t newCapacity =
+          std::max(data.size_bytes(),
+                   std::size_t{m_InstanceBuffer->GetSize()} * 2);
+      auto largerBuffer = std::make_unique<Buffer>(
+          RHI::BufferDesc{.type = RHI::BufferType::Vertex,
+                          .usage = RHI::BufferUsage::Dynamic,
+                          .size = newCapacity});
+      m_VertexArray.ReplaceVertexBuffer(1, *largerBuffer, layout);
+      m_InstanceBuffer = std::move(largerBuffer);
     }
-
-    CORE_ASSERT(data.size_bytes() <= m_InstanceBuffer->GetSize(),
-                "Instance buffer capacity exceeded");
 
     m_InstanceBuffer->SetData(data.data(), data.size_bytes());
   }

@@ -3,10 +3,15 @@
 #include "PlanetRenderer.hpp"
 #include "Simulation.hpp"
 
+#include "Events/EventDispatcher.hpp"
+#include "Events/MouseEvent.hpp"
+
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
+#include <cstdlib>
+#include <filesystem>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <memory>
 #include <mutex>
@@ -55,6 +60,11 @@ public:
     ImGuiIO &io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
+#ifdef WIN32
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+#endif
+
     ImGui::StyleColorsDark();
 
     constexpr float scale = 1.25f;
@@ -64,11 +74,36 @@ public:
     io.ConfigDpiScaleFonts = true;
 
     ImGui_ImplGlfw_InitForOpenGL(GetWindow().GetNativeHandle(), true);
-    ImGui_ImplOpenGL3_Init("#version 330 core");
+    ImGui_ImplOpenGL3_Init();
     ImGui_ImplOpenGL3_CreateDeviceObjects();
   }
 
-  void OnUpdate(float) override { m_Simulation.Update(); }
+  void OnUpdate(float dt) override {
+    if (m_LeftMouseHeld) {
+      m_SpawnTimer -= dt;
+      if (m_SpawnTimer <= 0.0f) {
+        const auto [framebufferWidth, framebufferHeight] =
+            GetWindow().GetFramebufferSize();
+        const int windowWidth = GetWindow().GetWidth();
+        const int windowHeight = GetWindow().GetHeight();
+
+        if (framebufferWidth > 0 && framebufferHeight > 0 && windowWidth > 0 &&
+            windowHeight > 0) {
+          const glm::vec2 position{
+              float(m_CursorPosition.x) * float(framebufferWidth) /
+                  float(windowWidth),
+              float(framebufferHeight) - float(m_CursorPosition.y) *
+                                             float(framebufferHeight) /
+                                             float(windowHeight)};
+          m_Simulation.SpawnPlanet(position);
+        }
+
+        m_SpawnTimer = kSpawnInterval;
+      }
+    }
+
+    m_Simulation.Update();
+  }
 
   void OnRender(float) override {
     const auto [width, height] = GetWindow().GetFramebufferSize();
@@ -87,6 +122,7 @@ public:
       ImGui_ImplOpenGL3_NewFrame();
       ImGui_ImplGlfw_NewFrame();
       ImGui::NewFrame();
+      m_ImGuiWantsMouse = ImGui::GetIO().WantCaptureMouse;
 
       ImGui::SetNextWindowSize(ImVec2(340.0f, 0.0f), ImGuiCond_FirstUseEver);
       ImGui::Begin("Planet controls");
@@ -121,7 +157,8 @@ public:
     Rendering::Renderer::BeginFrame(scene);
 
     const auto &p = m_Simulation.GetPlanets();
-    const auto projection = glm::ortho(0.0f, float(width), 0.0f, float(height));
+    const auto projection = glm::ortho(0.0f, static_cast<float>(width), 0.0f,
+                                       static_cast<float>(height));
 
     m_Renderer.Draw(p.positions, p.velocities, p.radii, projection);
 
@@ -140,20 +177,64 @@ public:
     ImGui::DestroyContext();
   }
 
+  void OnEvent(Core::Event &event) override {
+    Application::OnEvent(event);
+
+    Core::EventDispatcher dispatcher(event);
+    dispatcher.Dispatch<Core::MouseMovedEvent>(
+        [this](Core::MouseMovedEvent &mouseEvent) {
+          m_CursorPosition = {mouseEvent.GetX(), mouseEvent.GetY()};
+          return false;
+        });
+
+    dispatcher.Dispatch<Core::MouseButtonPressedEvent>(
+        [this](Core::MouseButtonPressedEvent &mouseEvent) {
+          if (mouseEvent.GetButton() == Core::MouseButton::Left &&
+              !m_ImGuiWantsMouse) {
+            glfwGetCursorPos(GetWindow().GetNativeHandle(), &m_CursorPosition.x,
+                             &m_CursorPosition.y);
+            m_LeftMouseHeld = true;
+            m_SpawnTimer = 0.0f;
+          }
+          return false;
+        });
+
+    dispatcher.Dispatch<Core::MouseButtonReleasedEvent>(
+        [this](Core::MouseButtonReleasedEvent &mouseEvent) {
+          if (mouseEvent.GetButton() == Core::MouseButton::Left)
+            m_LeftMouseHeld = false;
+          return false;
+        });
+  }
+
 private:
   static constexpr u32 kPlanetCount{1000};
+  static constexpr float kSpawnInterval{0.05f};
   PlanetSimulation m_Simulation{kPlanetCount};
 
   int m_Width{1280}, m_Height{720};
   PlanetRenderer m_Renderer;
 
   std::mutex m_ImGuiMutex;
+  glm::dvec2 m_CursorPosition{0.0};
+  float m_SpawnTimer{0.0f};
+  bool m_ImGuiWantsMouse{false}, m_LeftMouseHeld{false};
   ImVec4 m_BackgroundColor{0.02f, 0.025f, 0.04f, 1.0f},
       m_ColorTint{1.0f, 1.0f, 1.0f, 1.0f};
+
   float m_RadiusScale{1.5f}, m_MaxSpeed{75.0f}, m_GlowIntensity{1.0f};
 };
 
 int main() {
+#if defined(__linux__)
+  // WSL exposes the Windows GPU through Direct3D 12. Some Mesa/WSLg
+  // combinations otherwise select llvmpipe even though /dev/dxg is present.
+  // This must happen before Application constructs GLFW's OpenGL context.
+  if (std::filesystem::exists("/dev/dxg") &&
+      std::getenv("GALLIUM_DRIVER") == nullptr)
+    setenv("GALLIUM_DRIVER", "d3d12", 0);
+#endif
+
   PlanetSim app;
   app.Run();
 }

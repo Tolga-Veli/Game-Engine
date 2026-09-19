@@ -6,9 +6,7 @@ void PlanetSimulation::Init() {
   static std::mt19937 rng{std::random_device{}()};
 
   std::uniform_real_distribution<float> xDist(0.0f, m_Width),
-      yDist(0.0f, m_Height);
-
-  std::uniform_real_distribution<float> massDist(k_MinMass, k_MaxMass),
+      yDist(0.0f, m_Height), massDist(k_MinMass, k_MaxMass),
       radiusDist(k_MinRadius, k_MaxRadius);
 
   for (std::size_t i = 0; i < m_Planets.size(); ++i) {
@@ -22,7 +20,34 @@ void PlanetSimulation::Init() {
   CalculateAccelerations();
 
   m_Accumulator = 0.0f;
-  m_LastStepTime = std::chrono::steady_clock::now();
+  // Do not count application, renderer, shader, or ImGui initialization as
+  // elapsed simulation time. The first Update() establishes the clock.
+  m_HasLastStepTime = false;
+}
+
+void PlanetSimulation::SpawnPlanet() {
+  static std::mt19937 rng{std::random_device{}()};
+
+  std::uniform_real_distribution<float> xDist(0.0f, m_Width),
+      yDist(0.0f, m_Height);
+
+  SpawnPlanet({xDist(rng), yDist(rng)});
+}
+
+void PlanetSimulation::SpawnPlanet(glm::vec2 position) {
+  static std::mt19937 rng{std::random_device{}()};
+
+  std::uniform_real_distribution<float> massDist(k_MinMass, k_MaxMass),
+      radiusDist(k_MinRadius, k_MaxRadius);
+
+  const float radius = radiusDist(rng);
+  position.x = glm::clamp(position.x, radius,
+                          std::max(radius, m_Width - radius));
+  position.y = glm::clamp(position.y, radius,
+                          std::max(radius, m_Height - radius));
+
+  m_Planets.push_back(position, glm::vec2{0.0f}, massDist(rng), radius);
+  m_Accelerations.emplace_back(0.0f);
 }
 
 void PlanetSimulation::SetBounds(float width, float height) {
@@ -47,6 +72,13 @@ void PlanetSimulation::SetBounds(float width, float height) {
 
 void PlanetSimulation::Update() {
   const auto now = std::chrono::steady_clock::now();
+
+  if (!m_HasLastStepTime) {
+    m_LastStepTime = now;
+    m_HasLastStepTime = true;
+    return;
+  }
+
   float dt = std::chrono::duration<float>(now - m_LastStepTime).count();
 
   m_LastStepTime = now;
@@ -59,6 +91,11 @@ void PlanetSimulation::Update() {
     m_Accumulator -= k_FixedDt;
     ++steps;
   }
+
+  // A long OS/driver stall must not leave a permanent physics backlog. Once
+  // the safety cap is reached, retain only the interpolation remainder.
+  if (steps == k_MaxSubsteps && m_Accumulator >= k_FixedDt)
+    m_Accumulator = std::fmod(m_Accumulator, k_FixedDt);
 }
 
 void PlanetSimulation::CalculateAccelerations() {

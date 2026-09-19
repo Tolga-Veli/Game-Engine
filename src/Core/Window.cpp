@@ -39,11 +39,11 @@ Window::Window(const WindowOpts &opts)
       m_WindowedState{0, 0, opts.width, opts.height} {
 
   // glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+  glfwSetErrorCallback(GLFWErrorCallback);
 
   if (s_GLFWwindowCount == 0) {
     i32 success = glfwInit();
     CORE_VERIFY(success, "Window: glfwInit() failed");
-    glfwSetErrorCallback(GLFWErrorCallback);
   }
 
   // GLFW window hints

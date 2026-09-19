@@ -1,3 +1,4 @@
+#ifdef HERE
 #pragma once
 
 #include "EventQueue.hpp"
@@ -18,3 +19,4 @@ private:
   EventQueue &m_Queue;
 };
 } // namespace Jupiter::Core
+#endif

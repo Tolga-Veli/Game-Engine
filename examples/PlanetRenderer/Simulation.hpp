@@ -28,6 +28,13 @@ struct Planets {
     radii.reserve(cnt);
   }
 
+  void push_back(glm::vec2 pos, glm::vec2 vel, float mass, float radius) {
+    positions.push_back(pos);
+    velocities.push_back(vel);
+    masses.push_back(mass);
+    radii.push_back(radius);
+  }
+
   void erase(std::size_t idx) {
     CORE_ASSERT(idx < positions.size(), "out of bounds");
 
@@ -63,6 +70,9 @@ public:
 
   void Init();
 
+  void SpawnPlanet();
+  void SpawnPlanet(glm::vec2 position);
+
   void SetBodyCount(u32 count) {
     m_Planets.resize(count);
     m_Accelerations.resize(count);
@@ -90,8 +100,8 @@ private:
   //
   // k_InitialVelocityScale - < 1 keeps the initial system more thightly bound
   static constexpr float k_Gravity = 6.6743e-1, k_Softening = 4.0f,
-                         k_Bounce = 0.9f, k_FixedDt = 1.0f / 120.0f,
-                         k_MaxFrameDt = 0.1f, k_MinMass = 100.0f,
+                         k_Bounce = 0.9f, k_FixedDt = 1.0f / 60.0f,
+                         k_MaxFrameDt = 0.005f, k_MinMass = 100.0f,
                          k_MaxMass = 10000.0f, k_MinRadius = 2.0f,
                          k_MaxRadius = 4.0f, k_InitialVelocityScale = 1.0f;
 
@@ -102,6 +112,7 @@ private:
   float m_Width{}, m_Height{}, m_Accumulator{};
 
   std::chrono::steady_clock::time_point m_LastStepTime;
+  bool m_HasLastStepTime{false};
 
   void CalculateAccelerations();
   void PhysicsStep(float dt);

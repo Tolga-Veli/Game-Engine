@@ -36,6 +36,8 @@ public:
 
   void AddVertexBuffer(const Buffer &buff, const RHI::BufferLayout &layout,
                        u32 div = 0);
+  void ReplaceVertexBuffer(u32 binding, const Buffer &buff,
+                           const RHI::BufferLayout &layout);
 
   void SetIndexBuffer(const Buffer &buff);
 
