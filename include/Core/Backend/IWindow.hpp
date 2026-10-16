@@ -1,8 +1,10 @@
 #pragma once
 
 #include "Core/Utils.hpp"
-#include "Rendering/RendererAPI.hpp"
+#include "Rendering/GraphicsAPI.hpp"
 #include "Events/Event.hpp"
+
+struct GLFWwindow;
 
 namespace Jupiter::Core {
 enum class WindowMode : u8 { Windowed, Fullscreen, BorderlessFullscreen };
@@ -31,7 +33,7 @@ struct WindowOpts {
 
   // Refresh rate used when entering exclusive Fullscreen
   // GLFW_DONT_CARE = use monitor's default
-  i32 refresh_rate = GLFW_DONT_CARE;
+  i32 refresh_rate = -1;
 
   // Multisample anti-aliasing
   // 0 disabled, 4 = 4x MSAA, etc.
@@ -69,6 +71,7 @@ public:
   using EventCallbackFn = std::function<void(Event &)>;
 
   virtual ~IWindow() = default;
+  virtual void SetEventCallback(EventCallbackFn callback) = 0;
 
   virtual void PollEvents() noexcept = 0;
   virtual bool ShouldClose() const noexcept = 0;
@@ -81,7 +84,7 @@ public:
 
   virtual bool IsMinimized() const noexcept = 0;
   virtual bool IsFocused() const noexcept = 0;
-  virtual void ShowCursor() noexcept;
+  virtual void ShowCursor() noexcept = 0;
   virtual void HideCursor() noexcept = 0;
   virtual void LockCursor() noexcept = 0;
   virtual void UnlockCursor() noexcept = 0;

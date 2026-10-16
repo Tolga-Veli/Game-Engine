@@ -1,6 +1,7 @@
 #include "Rendering/RendererAPI.hpp"
 
 #include "Rendering/OpenGL/ResourceFactory.hpp"
+#include "Rendering/OpenGL/Renderer.hpp"
 
 #include <exception>
 #include <cstdlib>
@@ -8,31 +9,31 @@
 
 namespace Jupiter::Rendering {
 
-GraphicsAPI RendererAPI::s_RendererAPI = GraphicsAPI::OpenGL;
+std::atomic<GraphicsAPI> RendererAPI::s_RendererAPI = GraphicsAPI::OpenGL;
 Scope<RHI::IRenderer> RendererAPI::s_RendererImplementation;
 Scope<RHI::IResourceFactory> RendererAPI::s_ResourceFactory;
-Scope<RHI::IRenderCommandQueue> RendererAPI::m_RenderCommandQueue;
-RenderQueue RendererAPI::s_RenderQueue;
+RenderScheduler RendererAPI::s_RenderScheduler;
 
-void RendererAPI::Init(GLFWwindow *window) {
-  s_RenderQueue.Reset();
+void RendererAPI::Init(Core::Window &window) {
+  s_RenderScheduler.Reset();
+  s_RendererAPI.store(window.GetGraphicsAPI(), std::memory_order_release);
 
-  auto GetFactory = []() -> Scope<RHI::IResourceFactory> {
-    switch (s_RendererAPI) {
-    case GraphicsAPI::OpenGL:
-      return CreateScope<OpenGL::ResourceFactory>();
-    default:
-      std::abort();
-    }
-  };
+  switch (s_RendererAPI.load(std::memory_order_acquire)) {
+  case GraphicsAPI::OpenGL:
+    s_ResourceFactory = CreateScope<OpenGL::ResourceFactory>();
+    s_RendererImplementation = CreateScope<OpenGL::Renderer>();
+    break;
+  default:
+    throw std::runtime_error("Unsupported graphics API");
+  }
 
-  s_ResourceFactory = GetFactory();
   s_RendererImplementation->Init(window);
 }
 
 void RendererAPI::Shutdown() {
   std::exception_ptr failure;
-  s_RenderQueue.Stop();
+  s_RenderScheduler.Stop();
+  s_RenderScheduler.CancelPending();
 
   if (s_RendererImplementation) {
     try {
@@ -48,41 +49,63 @@ void RendererAPI::Shutdown() {
 }
 
 bool RendererAPI::RenderNextFrame() {
-  Frame *frame = s_RenderQueue.WaitForFrame();
-  if (!frame)
+  RenderScheduler::Work work;
+  if (!s_RenderScheduler.WaitNext(work))
     return false;
 
-  s_RendererImplementation->BeginFrame(frame->sceneData);
-  for (const auto &cmd : frame->commands)
-    if (!cmd.mesh.IsValid() || !cmd.material.IsValid())
-      s_RendererImplementation->Submit(cmd);
+  if (!work.isFrame) {
+    s_RendererImplementation->InvalidateState();
+    RenderExecutionContext context{*s_RendererImplementation, *s_ResourceFactory};
+    work.task(context);
+    return true;
+  }
 
-  for (const auto &overlay : frame->overlays)
-    overlay();
+  try {
+    s_RendererImplementation->BeginFrame(work.frame.sceneData);
+    for (const auto &cmd : work.frame.commands)
+      if (cmd.IsValid())
+        s_RendererImplementation->Submit(cmd);
 
-  s_RendererImplementation->EndFrame();
-  s_RenderQueue.ReleaseFrame(frame);
+    for (const auto &overlay : work.frame.overlays) {
+      s_RendererImplementation->InvalidateState();
+      overlay();
+    }
+
+    s_RendererImplementation->EndFrame();
+  } catch (...) {
+    s_RenderScheduler.CompleteFrame();
+    throw;
+  }
+  s_RenderScheduler.CompleteFrame(std::move(work.frame));
   return true;
 }
 
-void RendererAPI::RequestStop() { s_RenderQueue.Stop(); }
+void RendererAPI::RequestStop() { s_RenderScheduler.Stop(); }
+bool RendererAPI::IsStopping() { return s_RenderScheduler.IsStopping(); }
 
-void RendererAPI::Wake() { s_RenderQueue.Wake(); }
+void RendererAPI::CancelPending() { s_RenderScheduler.CancelPending(); }
 
-void RendererAPI::BeginFrame(const SceneData &sceneData) { s_RenderQueue.BeginFrame(sceneData); }
+bool RendererAPI::BeginFrame(const SceneData &sceneData) { return s_RenderScheduler.BeginFrame(sceneData); }
 
-void RendererAPI::SubmitDrawCommand(RHI::DrawCommand cmd) {
+bool RendererAPI::SubmitDrawCommand(RHI::DrawCommand cmd) {
   if (!cmd.IsValid())
-    return;
+    return false;
 
-  s_RenderQueue.Submit(std::move(cmd));
+  return s_RenderScheduler.Submit(std::move(cmd));
 }
 
-void RendererAPI::SubmitOverlay(std::function<void()> overlay) {
-  if (overlay)
-    s_RenderQueue.SubmitOverlay(std::move(overlay));
+bool RendererAPI::SubmitOverlay(std::function<void()> overlay) {
+  return s_RenderScheduler.SubmitOverlay(std::move(overlay));
 }
 
-void RendererAPI::EndFrame() { s_RenderQueue.EndFrame(); }
+bool RendererAPI::EndFrame() { return s_RenderScheduler.EndFrame(); }
+
+bool RendererAPI::CommitFrame(Frame frame) { return s_RenderScheduler.CommitFrame(std::move(frame)); }
+
+bool RendererAPI::SubmitRenderTask(RenderTask task) { return s_RenderScheduler.Enqueue(std::move(task)); }
+
+bool RendererAPI::SetVSync(RHI::VSyncMode mode) {
+  return SubmitRenderTask([mode](RenderExecutionContext &context) { context.renderer.SetVSync(mode); });
+}
 
 } // namespace Jupiter::Rendering

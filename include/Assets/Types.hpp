@@ -27,7 +27,8 @@ concept ToStringCompatible = requires(T &&value) { std::to_string(std::forward<T
 
 } // namespace detail
 
-enum class AssetType : u8 { Texture, Shader, Audio, Font, Mesh, Material };
+enum class AssetType : u8 { Texture, Shader, Audio, Font, Mesh, Material, Sampler };
+enum class AssetState : u8 { Invalid, Pending, Ready, Failed };
 
 inline constexpr std::string_view to_string(AssetType type) {
   switch (type) {
@@ -43,6 +44,8 @@ inline constexpr std::string_view to_string(AssetType type) {
     return "Mesh";
   case AssetType::Material:
     return "Material";
+  case AssetType::Sampler:
+    return "Sampler";
   }
 
   return "Unknown";

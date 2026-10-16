@@ -4,6 +4,9 @@
 #include "AssetHandle.hpp"
 
 #include <vector>
+#include <algorithm>
+#include <limits>
+#include <stdexcept>
 
 namespace Jupiter::Assets {
 
@@ -12,7 +15,7 @@ public:
   AssetPool() noexcept = default;
   ~AssetPool() noexcept = default;
 
-  AssetHandle<T> Reserve();
+  AssetHandle<T> Reserve(AssetID key = 0);
   AssetHandle<T> Insert(Ref<T> value);
   Ref<T> Resolve(AssetHandle<T> handle) const noexcept;
 
@@ -26,13 +29,19 @@ public:
   bool Release(AssetHandle<T> handle);
 
   bool IsValid(AssetHandle<T> handle) const noexcept;
+  AssetState GetState(AssetHandle<T> handle) const noexcept;
+  AssetID GetKey(AssetHandle<T> handle) const noexcept;
+
+  void MarkFailed(AssetHandle<T> handle) noexcept;
   void Clear() noexcept;
 
 private:
   struct Slot {
     Ref<T> data{};
-    u32 gen{};
+    u64 gen{};
+    AssetID key{};
     bool alive{false};
+    AssetState state{AssetState::Invalid};
   };
 
   std::vector<Slot> m_Slots;

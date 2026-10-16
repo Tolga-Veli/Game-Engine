@@ -8,6 +8,7 @@
 
 #include <chrono>
 #include <exception>
+#include <thread>
 
 namespace Jupiter {
 
@@ -39,6 +40,13 @@ void Application::Run() {
 
       if (!m_Running || m_RenderThread.HasFailed())
         break;
+
+      const auto [width, height] = m_Window.GetFramebufferSize();
+      if (m_Window.IsMinimized() || width <= 0 || height <= 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds{16});
+        lastTime = Clock::now();
+        continue;
+      }
 
       OnUpdate(dt);
 
@@ -78,9 +86,8 @@ bool Application::Init() {
     return false;
 
   m_Initialized = true;
-  OnInit();
-
   m_Running = true;
+  OnInit();
   return true;
 }
 
@@ -91,10 +98,9 @@ bool Application::InitRenderThread() {
     bool rendererAttempted = false, assetsInitialized = false, renderInitStarted = false;
     try {
       rendererAttempted = true;
-      Rendering::RendererAPI::Init(m_Window.GetNativeHandle());
+      Rendering::RendererAPI::Init(m_Window);
 
       auto &assets = Assets::AssetManager::GetInstance();
-      assets.SetRendererWakeup([] { Rendering::RendererAPI::Wake(); });
       assets.Init();
       assetsInitialized = true;
 
@@ -120,12 +126,6 @@ bool Application::InitRenderThread() {
 
       std::rethrow_exception(failure);
     }
-  };
-
-  hooks.OnFrame = []() {
-    auto &assets = Assets::AssetManager::GetInstance();
-    assets.ProcessRenderTasks();
-    assets.PollHotReload();
   };
 
   hooks.Shutdown = [this]() {

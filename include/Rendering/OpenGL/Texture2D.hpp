@@ -22,8 +22,6 @@ public:
   void Bind(u32 slot = 0) const noexcept;
 
 private:
-  void Upload(StorageView pixels, u32 width, u32 height, u32 channels);
-
   u32 m_RendererID{}, m_Width{}, m_Height{};
 };
 } // namespace Jupiter::Rendering::OpenGL

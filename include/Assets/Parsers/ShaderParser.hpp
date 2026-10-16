@@ -29,7 +29,8 @@ public:
     Rendering::RHI::ShaderSources sources{};
 
     Storage buffer;
-    Data::ReadFile(path, buffer);
+    if (Data::ReadFile(path, buffer) != Data::FileError::Success)
+      return {};
     std::string source(reinterpret_cast<const char *>(buffer.data()), buffer.size());
 
     constexpr std::string_view token = "#type";

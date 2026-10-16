@@ -8,7 +8,6 @@
 #include "Rendering/Texture2D.hpp"
 
 #include <algorithm>
-#include <concepts>
 #include <glm/glm.hpp>
 #include <string>
 #include <utility>
@@ -34,7 +33,7 @@ struct DrawCommand {
   u32 instanceCount{1}, elementCount{};
 
   Storage vertices, instanceData;
-  bool alphaBlend{false}, depthTest{true};
+  bool alphaBlend{false}, depthTest{true}, depthWrite{true};
 
   std::vector<RHI::ShaderOverride> overrides;
 
@@ -63,20 +62,17 @@ struct DrawCommand {
       it->value = std::move(value);
     else
       overrides.push_back({std::move(name), std::move(value)});
+
     return *this;
   }
 
-  template <class U>
-    requires(std::constructible_from<Storage, U>)
-  DrawCommand &UploadVertices(U &&data) {
-    vertices = Storage(std::forward<U>(data));
+  DrawCommand &UploadVertices(std::span<const std::byte> data) {
+    vertices = Storage(data);
     return *this;
   }
 
-  template <class U>
-    requires(std::constructible_from<Storage, U>)
-  DrawCommand &UploadInstances(U &&data) {
-    instanceData = Storage(std::forward<U>(data));
+  DrawCommand &UploadInstances(std::span<const std::byte> data) {
+    instanceData = Storage(data);
     return *this;
   }
 
@@ -87,6 +83,11 @@ struct DrawCommand {
 
   DrawCommand &DisableDepthTest() {
     depthTest = false;
+    return *this;
+  }
+
+  DrawCommand &DisableDepthWrite() {
+    depthWrite = false;
     return *this;
   }
 

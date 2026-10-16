@@ -8,8 +8,9 @@
 
 namespace Jupiter::Assets {
 void AssetManager::Init() {
-  CORE_ASSERT(IsRenderThread(), "AssetManager: Init() must run on the render thread");
-  m_RenderThreadID = std::this_thread::get_id();
+  std::unique_lock registryLock(m_RegistryMutex);
+  if (m_Active)
+    throw std::logic_error("AssetManager: already initialized");
 
   const fs::path base = fs::current_path();
   fs::path assetsDir = base / "assets";
@@ -21,58 +22,52 @@ void AssetManager::Init() {
 
   if (!fs::exists(assetsDir) || !fs::is_directory(assetsDir)) {
     LOG_ERROR("AssetManager: FAILED to find assets folder at '{}'", assetsDir.string());
-    m_RenderThreadID = {};
-    return;
+    throw std::runtime_error("AssetManager: assets directory not found");
   }
 
   m_AssetsDir = assetsDir.lexically_normal();
+  m_RenderThreadID = std::this_thread::get_id();
+  m_Active = true;
+  {
+    std::scoped_lock loadLock(m_LoadMutex);
+    m_LoadStopping = false;
+  }
 
   LOG_INFO("AssetManager: Root established at {}", m_AssetsDir.string());
 
-  m_WatcherThread = std::jthread([this](std::stop_token st) { WatcherThreadMain(st); });
-
-  // If anything might have been queued up by Create(Runtime) before
-  // initializing
-  Assets::AssetManager::GetInstance().ProcessRenderTasks();
-}
-
-void AssetManager::ProcessRenderTasks() {
-  CORE_ASSERT(IsRenderThread(), "AssetManager: ProcessRenderTasks() must run "
-                                "on the render thread");
-
-  std::vector<RenderTask> tasks;
-  {
-    std::scoped_lock lock(m_RenderTasksMutex);
-    tasks.swap(m_RenderTasks);
+  registryLock.unlock();
+  try {
+    m_LoadThread = std::jthread([this](std::stop_token st) { LoadThreadMain(st); });
+    m_WatcherThread = std::jthread([this](std::stop_token st) { WatcherThreadMain(st); });
+  } catch (...) {
+    Shutdown();
+    throw;
   }
-
-  for (auto &task : tasks)
-    if (task)
-      task();
 }
 
 // WARNING:
 // Pool destruction happens here while the graphics context is still alive
 void AssetManager::Shutdown() noexcept {
-  CORE_ASSERT(IsRenderThread(), "AssetManager: Shutdown() must run "
-                                "on the render thread");
+  {
+    std::unique_lock lock(m_RegistryMutex);
+    CORE_VERIFY(IsRenderThread(), "AssetManager: Shutdown() must run on the render thread");
+    m_Active = false;
+  }
 
   m_WatcherThread.request_stop();
 
   if (m_WatcherThread.joinable())
     m_WatcherThread.join();
 
-  // Cancel queued work instead of running factories during teardown. Destroy
-  // captures outside the queue lock, and cancel any work they enqueue too.
-  while (true) {
-    std::vector<RenderTask> cancelledTasks;
-    {
-      std::scoped_lock lock(m_RenderTasksMutex);
-      if (m_RenderTasks.empty())
-        break;
-      cancelledTasks.swap(m_RenderTasks);
-    }
+  {
+    std::scoped_lock lock(m_LoadMutex);
+    m_LoadStopping = true;
   }
+  m_LoadThread.request_stop();
+  m_LoadCV.notify_all();
+  if (m_LoadThread.joinable())
+    m_LoadThread.join();
+  m_LoadJobs.clear();
 
   {
     std::unique_lock lock(m_RegistryMutex);
@@ -80,53 +75,55 @@ void AssetManager::Shutdown() noexcept {
     // Asset pools own the actual GPU-backed resources.
     // They MUST be destroyed before the graphics context disappears.
     m_Registry.clear();
+    m_FileAssets.clear();
     m_AssetPools.Clear();
+    m_RenderThreadID = {};
   }
 
   {
     std::scoped_lock lock(m_PendingReloadMutex);
     m_PendingReloads.clear();
+    m_ReloadScheduled = false;
   }
-
-  m_RendererWakeup = {};
-  m_RenderThreadID = {};
 
   LOG_INFO("AssetManager: Resources cleared");
 }
 
-void AssetManager::PollHotReload() {
+void AssetManager::PollHotReload(Rendering::RenderExecutionContext &context) {
+  (void)context;
   CORE_ASSERT(IsRenderThread(), "AssetManager: PollHotReload() must run "
                                 "on the render thread");
 
-  std::vector<PendingReload> jobs;
+  std::unordered_map<AssetID, PendingReload> jobs;
   {
     std::scoped_lock lock(m_PendingReloadMutex);
 
-    if (m_PendingReloads.empty())
-      return;
-
     jobs.swap(m_PendingReloads);
+    m_ReloadScheduled = false;
   }
 
-  for (const auto &job : jobs) {
+  for (const auto &[id, job] : jobs) {
     using enum AssetType;
 
     switch (job.type) {
     case Shader:
       ReloadAsset<Rendering::Shader>(job);
-      return;
+      break;
     case Texture:
       ReloadAsset<Rendering::Texture2D>(job);
-      return;
+      break;
     case Font:
       ReloadAsset<Rendering::Font>(job);
-      return;
+      break;
     case Mesh:
       ReloadAsset<Rendering::Mesh>(job);
-      return;
+      break;
     case Material:
       ReloadAsset<Rendering::Material>(job);
-      return;
+      break;
+    case Sampler:
+      ReloadAsset<Rendering::Sampler>(job);
+      break;
     default:
       UNREACHABLE("Unsupported job reload type");
       break;
@@ -147,9 +144,10 @@ void AssetManager::WatcherThreadMain(std::stop_token st) {
     {
       std::shared_lock lock(m_RegistryMutex);
 
-      snapshot.reserve(m_Registry.size());
-      for (const auto &[id, record] : m_Registry) {
-        if (record.runtimeCreated || record.path.empty())
+      snapshot.reserve(m_FileAssets.size());
+      for (const auto id : m_FileAssets) {
+        const auto &record = m_Registry.at(id);
+        if (record.runtimeCreated || record.path.empty() || record.loading)
           continue;
 
         snapshot.push_back({id, record.type, record.path, record.lastWriteTime});
@@ -185,23 +183,46 @@ void AssetManager::WatcherThreadMain(std::stop_token st) {
 
       {
         std::scoped_lock pendingLock(m_PendingReloadMutex);
-        m_PendingReloads.push_back({tracked.type, tracked.id, tracked.path});
+        m_PendingReloads.insert_or_assign(tracked.id, PendingReload{tracked.type, tracked.id, tracked.path});
       }
-
-      if (m_RendererWakeup)
-        m_RendererWakeup();
     }
-    std::this_thread::sleep_for(m_PollInterval);
+    {
+      std::scoped_lock lock(m_PendingReloadMutex);
+      if (!m_PendingReloads.empty() && !m_ReloadScheduled)
+        m_ReloadScheduled =
+            QueueRenderTask([this](Rendering::RenderExecutionContext &context) { PollHotReload(context); });
+    }
+    std::unique_lock waitLock(m_WatcherMutex);
+    m_WatcherCV.wait_for(waitLock, st, m_PollInterval, [] { return false; });
   }
 }
 
-void AssetManager::QueueRenderTask(RenderTask task) {
+bool AssetManager::QueueLoad(std::move_only_function<void()> job) {
   {
-    std::scoped_lock lock(m_RenderTasksMutex);
-    m_RenderTasks.push_back(std::move(task));
+    std::scoped_lock lock(m_LoadMutex);
+    if (m_LoadStopping || m_LoadJobs.size() >= k_MaxPendingLoads)
+      return false;
+    m_LoadJobs.push_back(std::move(job));
   }
+  m_LoadCV.notify_one();
+  return true;
+}
 
-  if (m_RendererWakeup)
-    m_RendererWakeup();
+void AssetManager::LoadThreadMain(std::stop_token st) {
+  while (!st.stop_requested()) {
+    std::move_only_function<void()> job;
+    {
+      std::unique_lock lock(m_LoadMutex);
+      if (!m_LoadCV.wait(lock, st, [this] { return m_LoadStopping || !m_LoadJobs.empty(); }) || m_LoadStopping)
+        return;
+      job = std::move(m_LoadJobs.front());
+      m_LoadJobs.pop_front();
+    }
+    job();
+  }
+}
+
+bool AssetManager::QueueRenderTask(RenderTask task) {
+  return Rendering::RendererAPI::SubmitRenderTask(std::move(task));
 }
 } // namespace Jupiter::Assets

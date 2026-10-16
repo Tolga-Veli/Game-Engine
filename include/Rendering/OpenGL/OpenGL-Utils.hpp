@@ -33,6 +33,7 @@ inline constexpr GLenum JupiterToOpenGLShaderDataType(RHI::DataType type) {
   case Texture2D:
   case None:
   case Count:
+    return 0;
   }
 
   UNREACHABLE("Undefined shader data type");
@@ -55,6 +56,7 @@ inline constexpr u32 JupiterToOpenGLShaderType(RHI::ShaderType type) {
   case TessEval:
   case TessControl:
   case Count:
+    return 0;
   }
 
   UNREACHABLE("Undefined shader type");
@@ -75,6 +77,24 @@ inline GLenum JupiterToOpenGLTextureFormat(RHI::TextureFormat format) noexcept {
   case RGBA8:
     return GL_RGBA;
   }
+  return GL_NONE;
+}
+
+inline GLenum JupiterToOpenGLInternalTextureFormat(RHI::TextureFormat format) noexcept {
+  using enum RHI::TextureFormat;
+  switch (format) {
+  case R8:
+    return GL_R8;
+  case RG8:
+    return GL_RG8;
+  case RGB8:
+    return GL_RGB8;
+  case RGBA8:
+    return GL_RGBA8;
+  case None:
+    return GL_NONE;
+  }
+  return GL_NONE;
 }
 
 inline GLenum JupiterToOpenGLFilterMode(RHI::FilterMode filter) noexcept {
@@ -85,6 +105,7 @@ inline GLenum JupiterToOpenGLFilterMode(RHI::FilterMode filter) noexcept {
   case Linear:
     return GL_LINEAR;
   }
+  return GL_NONE;
 }
 
 inline GLenum JupiterToOpenGLWrapMode(RHI::WrapMode wrap) noexcept {
@@ -99,6 +120,7 @@ inline GLenum JupiterToOpenGLWrapMode(RHI::WrapMode wrap) noexcept {
   case ClampToBorder:
     return GL_CLAMP_TO_BORDER;
   }
+  return GL_NONE;
 }
 
 } // namespace Jupiter::Rendering::OpenGL

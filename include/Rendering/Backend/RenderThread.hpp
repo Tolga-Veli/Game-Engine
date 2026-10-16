@@ -3,13 +3,14 @@
 #include <atomic>
 #include <functional>
 #include <thread>
+#include <mutex>
+#include <exception>
 
 namespace Jupiter::Rendering {
 
 struct RenderThreadHooks {
   std::function<bool()> Init;     // runs on the render thread; false = abort startup
   std::function<void()> Shutdown; // runs on the render thread, GL context still alive
-  std::function<void()> OnFrame;  // called in a loop until Stop()
 };
 
 class RenderThread {
@@ -24,7 +25,6 @@ public:
 
   [[nodiscard]] bool Start(RenderThreadHooks hooks);
 
-  // WARNING: Does NOT wake a blocked OnFrame -> call RendererAPI::RequestStop() first.
   void Stop() noexcept;
 
   [[nodiscard]] bool HasFailed() const noexcept { return m_Failed.load(std::memory_order_acquire); }

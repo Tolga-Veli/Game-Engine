@@ -23,6 +23,7 @@ public:
   [[nodiscard]] u32 GetVertexCapacity() const noexcept { return m_Impl->GetVertexCapacity(); }
   [[nodiscard]] u32 GetIndexCount() const noexcept { return m_Impl->GetIndexCount(); }
   [[nodiscard]] u32 GetIndexCapacity() const noexcept { return m_Impl->GetIndexCapacity(); }
+  [[nodiscard]] RHI::IMesh &GetImpl() noexcept { return *m_Impl; }
 
 private:
   Scope<RHI::IMesh> m_Impl;

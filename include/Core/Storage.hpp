@@ -4,6 +4,7 @@
 #include <cstring>
 #include <memory>
 #include <span>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -12,16 +13,24 @@ class Storage {
 public:
   Storage() noexcept = default;
 
-  explicit Storage(std::size_t size) : m_Data(std::make_unique<std::byte[]>(size)), m_Size(size), m_Capacity(size) {}
+  // Allocated bytes are uninitialized; fill the active range before uploading.
+  explicit Storage(std::size_t size)
+      : m_Data(size ? std::make_unique_for_overwrite<std::byte[]>(size) : nullptr), m_Size(size), m_Capacity(size) {}
 
-  template <class T, std::size_t N> explicit Storage(std::span<T, N> source) : Storage(source.size_bytes()) {
+  template <class T, std::size_t N>
+    requires(std::is_trivially_copyable_v<T>)
+  explicit Storage(std::span<T, N> source) : Storage(source.size_bytes()) {
     if (m_Size)
       std::memcpy(m_Data.get(), source.data(), m_Size);
   }
 
-  template <class T, std::size_t N> explicit Storage(T (&source)[N]) : Storage(std::span<T, N>{source}) {}
+  template <class T, std::size_t N>
+    requires(std::is_trivially_copyable_v<T>)
+  explicit Storage(T (&source)[N]) : Storage(std::span<T, N>{source}) {}
 
-  template <class T, class Alloc> Storage(const std::vector<T, Alloc> &source) : Storage(std::span<const T>(source)) {}
+  template <class T, class Alloc>
+    requires(std::is_trivially_copyable_v<T>)
+  Storage(const std::vector<T, Alloc> &source) : Storage(std::span<const T>(source)) {}
 
   // WARNING: Deep copy
   Storage(const Storage &other) : Storage(other.m_Size) {
@@ -72,7 +81,7 @@ public:
     if (size <= m_Capacity)
       return;
 
-    auto temp = std::make_unique<std::byte[]>(size);
+    auto temp = std::make_unique_for_overwrite<std::byte[]>(size);
 
     if (m_Size)
       std::memcpy(temp.get(), m_Data.get(), m_Size);

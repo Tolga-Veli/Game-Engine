@@ -48,13 +48,8 @@ bool RenderThread::Start(RenderThreadHooks hooks) {
         return;
 
       while (!m_Stopping.load(std::memory_order_acquire)) {
-        if (hooks.OnFrame)
-          hooks.OnFrame();
-
-        if (m_Stopping.load(std::memory_order_acquire))
+        if (!RendererAPI::RenderNextFrame())
           break;
-
-        RendererAPI::RenderNextFrame();
       }
     } catch (...) {
       const auto failure = std::current_exception();
@@ -74,6 +69,11 @@ bool RenderThread::Start(RenderThreadHooks hooks) {
       if (initialized)
         m_Stopping.wait(false, std::memory_order_acquire);
     }
+
+    if (initialized)
+      try {
+        RendererAPI::CancelPending();
+      } catch (...) { RecordFailure(std::current_exception()); }
 
     if (initialized && hooks.Shutdown)
       try {

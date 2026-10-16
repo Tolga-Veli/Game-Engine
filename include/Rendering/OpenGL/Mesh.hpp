@@ -18,9 +18,15 @@ public:
   Mesh(Mesh &&) = delete;
   Mesh &operator=(Mesh &&) = delete;
 
-  bool SetGeometry(const RHI::BufferDesc &desc, const RHI::BufferData &indices) override;
+  bool SetGeometry(const RHI::BufferData &vertices, const RHI::BufferData &indices) override;
   bool UpdateVertices(const RHI::BufferData &vertices) override;
   bool UpdateIndices(const RHI::BufferData &indices) override;
+  bool UpdateInstances(const RHI::BufferData &instances);
+  void MarkUsed() noexcept;
+
+  [[nodiscard]] bool HasInstances() const noexcept { return m_InstanceBuffer != nullptr; }
+  [[nodiscard]] u32 GetInstanceCount() const noexcept { return m_InstanceCount; }
+  [[nodiscard]] bool HasValidIndices() const noexcept { return !m_IndexCount || m_MaxIndex < m_VertexCount; }
 
   [[nodiscard]] const RHI::BufferLayout &GetLayout() const noexcept override { return m_Layout; }
 
@@ -34,12 +40,17 @@ private:
   RHI::BufferLayout m_Layout;
   VertexArray m_VertexArray;
   Buffer m_VertexBuffer, m_IndexBuffer;
+  Scope<Buffer> m_InstanceBuffer;
   u32 m_VertexCount{}, m_VertexCapacity{}, m_IndexCount{}, m_IndexCapacity{};
+  u32 m_InstanceCapacity{};
+  u32 m_InstanceCount{}, m_MaxIndex{};
+  RHI::BufferLayout m_InstanceLayout;
 
   static u32 GrowCapacity(u32 curr, u32 required) noexcept;
 
   [[nodiscard]] bool IsValidVertexData(const RHI::BufferData &data) const noexcept;
   [[nodiscard]] bool IsValidIndexData(const RHI::BufferData &data) const noexcept;
+  [[nodiscard]] static u32 MaxIndex(const RHI::BufferData &data) noexcept;
 
   void EnsureVertexCapacity(u32 sz);
   void EnsureIndexCapacity(u32 sz);

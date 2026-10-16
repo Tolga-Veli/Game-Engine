@@ -35,7 +35,7 @@ class Window {
 public:
   using EventCallbackFn = std::function<void(Event &)>;
 
-  explicit Window(const WindowOpts &opts) : m_WindowImpl(CreateScope<detail::GLFW_Window>(opts)) {}
+  explicit Window(const WindowOpts &opts) : m_WindowImpl(CreateScope<detail::GLFW_Window>(opts)), m_API(opts.api) {}
   ~Window() = default;
 
   Window(const Window &) = delete;
@@ -63,17 +63,13 @@ public:
 
   std::string_view GetTitle() const noexcept { return m_WindowImpl->GetTitle(); }
 
-  void SetEventCallback(EventCallbackFn callback) { m_EventCallback = std::move(callback); }
+  void SetEventCallback(EventCallbackFn callback) { m_WindowImpl->SetEventCallback(std::move(callback)); }
 
   GLFWwindow *GetNativeHandle() const noexcept { return m_WindowImpl->GetNativeHandle(); }
+  Rendering::GraphicsAPI GetGraphicsAPI() const noexcept { return m_API; }
 
 private:
   Scope<detail::IWindow> m_WindowImpl;
-  EventCallbackFn m_EventCallback;
-
-  void FireEvent(Event &event) {
-    if (m_EventCallback)
-      m_EventCallback(event);
-  }
+  Rendering::GraphicsAPI m_API;
 };
 }; // namespace Jupiter::Core

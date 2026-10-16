@@ -5,6 +5,11 @@
 #include "Events/WindowEvent.hpp"
 
 namespace Jupiter::Core::detail {
+namespace {
+// GLFW window creation and destruction are main-thread-only.
+u32 s_WindowCount{};
+} // namespace
+
 GLFW_Window::GLFW_Window(const WindowOpts &opts)
     : m_WindowMode(opts.mode), m_RefreshRate(opts.refresh_rate), m_Title(opts.title) {
 
@@ -12,51 +17,61 @@ GLFW_Window::GLFW_Window(const WindowOpts &opts)
 
   if (!glfwInit())
     throw std::runtime_error("Window: glfwInit() failed");
+  ++s_WindowCount;
 
-  glfwWindowHint(GLFW_RESIZABLE, opts.resizeable ? GLFW_TRUE : GLFW_FALSE);
-  glfwWindowHint(GLFW_DECORATED, opts.decorated ? GLFW_TRUE : GLFW_FALSE);
-  glfwWindowHint(GLFW_FLOATING, opts.floating ? GLFW_TRUE : GLFW_FALSE);
-  glfwWindowHint(GLFW_MAXIMIZED, opts.maximized ? GLFW_TRUE : GLFW_FALSE);
-  glfwWindowHint(GLFW_VISIBLE, opts.visible ? GLFW_TRUE : GLFW_FALSE);
-  glfwWindowHint(GLFW_FOCUSED, opts.focused ? GLFW_TRUE : GLFW_FALSE);
-  glfwWindowHint(GLFW_MOUSE_PASSTHROUGH, opts.mouse_passthrough ? GLFW_TRUE : GLFW_FALSE);
-  glfwWindowHint(GLFW_SAMPLES, opts.samples);
-  glfwWindowHint(GLFW_SRGB_CAPABLE, opts.sRGB ? GLFW_TRUE : GLFW_FALSE);
+  try {
+    glfwWindowHint(GLFW_RESIZABLE, opts.resizeable ? GLFW_TRUE : GLFW_FALSE);
+    glfwWindowHint(GLFW_DECORATED, opts.decorated ? GLFW_TRUE : GLFW_FALSE);
+    glfwWindowHint(GLFW_FLOATING, opts.floating ? GLFW_TRUE : GLFW_FALSE);
+    glfwWindowHint(GLFW_MAXIMIZED, opts.maximized ? GLFW_TRUE : GLFW_FALSE);
+    glfwWindowHint(GLFW_VISIBLE, opts.visible ? GLFW_TRUE : GLFW_FALSE);
+    glfwWindowHint(GLFW_FOCUSED, opts.focused ? GLFW_TRUE : GLFW_FALSE);
+    glfwWindowHint(GLFW_MOUSE_PASSTHROUGH, opts.mouse_passthrough ? GLFW_TRUE : GLFW_FALSE);
+    glfwWindowHint(GLFW_SAMPLES, opts.samples);
+    glfwWindowHint(GLFW_SRGB_CAPABLE, opts.sRGB ? GLFW_TRUE : GLFW_FALSE);
 
-  ApplyClientAPIHints(opts.api);
+    ApplyClientAPIHints(opts.api);
 
-  m_WindowHandle = glfwCreateWindow(opts.width, opts.height, std::string{m_Title}.c_str(), nullptr, nullptr);
+    m_WindowHandle = glfwCreateWindow(opts.width, opts.height, m_Title.c_str(), nullptr, nullptr);
 
-  if (!m_WindowHandle)
-    throw std::runtime_error("Window: glfwCreateWindow() failed");
+    if (!m_WindowHandle)
+      throw std::runtime_error("Window: glfwCreateWindow() failed");
 
-  if (opts.pos_x != -1 && opts.pos_y != -1)
-    glfwSetWindowPos(m_WindowHandle, opts.pos_x, opts.pos_y);
+    if (opts.pos_x != -1 && opts.pos_y != -1)
+      glfwSetWindowPos(m_WindowHandle, opts.pos_x, opts.pos_y);
 
-  glfwSetWindowUserPointer(m_WindowHandle, this);
+    glfwSetWindowUserPointer(m_WindowHandle, this);
 
-  glfwSetWindowPosCallback(m_WindowHandle, WindowPosCallback);
-  glfwSetFramebufferSizeCallback(m_WindowHandle, FramebufferResizeCallback);
-  glfwSetWindowSizeCallback(m_WindowHandle, WindowSizeCallback);
-  glfwSetWindowCloseCallback(m_WindowHandle, WindowCloseCallback);
-  glfwSetWindowFocusCallback(m_WindowHandle, WindowFocusCallback);
-  glfwSetWindowRefreshCallback(m_WindowHandle, WindowRefreshCallback);
+    glfwSetWindowPosCallback(m_WindowHandle, WindowPosCallback);
+    glfwSetFramebufferSizeCallback(m_WindowHandle, FramebufferResizeCallback);
+    glfwSetWindowSizeCallback(m_WindowHandle, WindowSizeCallback);
+    glfwSetWindowCloseCallback(m_WindowHandle, WindowCloseCallback);
+    glfwSetWindowFocusCallback(m_WindowHandle, WindowFocusCallback);
+    glfwSetWindowRefreshCallback(m_WindowHandle, WindowRefreshCallback);
 
-  glfwSetKeyCallback(m_WindowHandle, KeyCallback);
-  glfwSetCursorPosCallback(m_WindowHandle, CursorPosCallback);
-  glfwSetMouseButtonCallback(m_WindowHandle, MouseButtonCallback);
-  glfwSetScrollCallback(m_WindowHandle, ScrollCallback);
+    glfwSetKeyCallback(m_WindowHandle, KeyCallback);
+    glfwSetCursorPosCallback(m_WindowHandle, CursorPosCallback);
+    glfwSetMouseButtonCallback(m_WindowHandle, MouseButtonCallback);
+    glfwSetScrollCallback(m_WindowHandle, ScrollCallback);
 
-  if (opts.mode != WindowMode::Windowed)
-    SetWindowMode(opts.mode);
+    if (opts.mode != WindowMode::Windowed)
+      SetWindowMode(opts.mode);
 
-  LOG_INFO("Window: created '{}' ({}x{}), platform: {}", m_Title, opts.width, opts.height, glfwGetPlatform());
+    LOG_INFO("Window: created '{}' ({}x{}), platform: {}", m_Title, opts.width, opts.height, glfwGetPlatform());
+  } catch (...) {
+    if (m_WindowHandle)
+      glfwDestroyWindow(m_WindowHandle);
+    if (--s_WindowCount == 0)
+      glfwTerminate();
+    throw;
+  }
 }
 
 GLFW_Window::~GLFW_Window() {
   if (m_WindowHandle)
     glfwDestroyWindow(m_WindowHandle);
-  glfwTerminate();
+  if (--s_WindowCount == 0)
+    glfwTerminate();
 }
 
 void GLFW_Window::ApplyClientAPIHints(Rendering::GraphicsAPI api) const {
@@ -70,6 +85,12 @@ void GLFW_Window::ApplyClientAPIHints(Rendering::GraphicsAPI api) const {
 #ifdef J_DEBUG
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 #endif
+    break;
+  case Rendering::GraphicsAPI::Vulkan:
+  case Rendering::GraphicsAPI::Metal:
+  case Rendering::GraphicsAPI::DX11:
+  case Rendering::GraphicsAPI::DX12:
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     break;
   default:
     throw std::invalid_argument("Window: requested graphics API is not supported");

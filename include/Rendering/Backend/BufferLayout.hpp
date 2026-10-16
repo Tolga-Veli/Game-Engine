@@ -7,7 +7,7 @@
 
 namespace Jupiter::Rendering::RHI {
 struct BufferElement {
-  std::string_view name;
+  std::string name;
   DataType type;
   u32 size, offset, location;
   bool normalized;

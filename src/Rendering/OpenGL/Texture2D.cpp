@@ -15,17 +15,23 @@ Texture2D::Texture2D(const RHI::TextureData &info) noexcept : m_Width(info.width
 
   glCreateTextures(GL_TEXTURE_2D, 1, &m_RendererID);
 
-  glTextureStorage2D(m_RendererID, 1, JupiterToOpenGLTextureFormat(info.format), info.width, info.height);
+  glTextureStorage2D(m_RendererID, 1, JupiterToOpenGLInternalTextureFormat(info.format), info.width, info.height);
 
   glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+  GLint alignment{}, unpackBuffer{};
+  glGetIntegerv(GL_UNPACK_ALIGNMENT, &alignment);
+  glGetIntegerv(GL_PIXEL_UNPACK_BUFFER_BINDING, &unpackBuffer);
+  glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
   glTextureSubImage2D(m_RendererID, 0, 0, 0, info.width, info.height, JupiterToOpenGLTextureFormat(info.format),
                       GL_UNSIGNED_BYTE, info.data.data());
+  glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
+  glBindBuffer(GL_PIXEL_UNPACK_BUFFER, unpackBuffer);
 }
 
 Texture2D::~Texture2D() noexcept {

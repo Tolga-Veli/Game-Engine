@@ -5,8 +5,7 @@
 #include "IShader.hpp"
 #include "IMesh.hpp"
 #include "ITexture.hpp"
-
-#include <GLFW/glfw3.h>
+#include "ISampler.hpp"
 
 namespace Jupiter::Rendering::RHI {
 
@@ -20,6 +19,6 @@ public:
   virtual Scope<IMesh> CreateMesh(const MeshDesc &data) = 0;
   virtual Scope<IShader> CreateShader(const ShaderSources &shaderSrcs) = 0;
   virtual Scope<ITexture> CreateTexture(const TextureData &info) = 0;
-  // should i create a factory function for render command and render command queue and etc.
+  virtual Scope<ISampler> CreateSampler(const SamplerSpec &) { return {}; }
 };
 }; // namespace Jupiter::Rendering::RHI

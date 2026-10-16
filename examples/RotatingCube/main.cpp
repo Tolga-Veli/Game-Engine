@@ -1,137 +1,81 @@
 #include "Core/Application.hpp"
-
 #include "Assets/AssetManager.hpp"
 #include "Rendering/Backend/SceneData.hpp"
-#include "Rendering/Material.hpp"
-#include "Rendering/Renderer.hpp"
+#include "Rendering/RendererAPI.hpp"
 
-#include <glm/glm.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
-#include <exception>
 #include <string_view>
 
 using namespace Jupiter;
 
 class MyApp final : public Application {
 public:
-  MyApp() noexcept = default;
+  MyApp() = default;
 
   void OnRenderInit() override {
-    GetGraphicsContext().SetVSync(Rendering::RHI::VSyncMode::Off);
+    Rendering::RendererAPI::SetVSync(Rendering::RHI::VSyncMode::Off);
+    m_Shader = Assets::AssetManager::Load<Rendering::Shader>("Shaders/rot_cube.glsl");
 
-    shaderHandle =
-        Assets::AssetManager::Get<Rendering::Shader>("Shaders/rot_cube.glsl");
+    constexpr float vertices[] = {-0.5f, -0.5f, 0.5f,  0.5f, -0.5f, 0.5f,  0.5f, 0.5f, 0.5f,  -0.5f, 0.5f, 0.5f,
+                                  -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, -0.5f, 0.5f, 0.5f, -0.5f, -0.5f, 0.5f, -0.5f};
+    constexpr u32 indices[] = {0, 1, 2, 2, 3, 0, 1, 5, 6, 6, 2, 1, 5, 4, 7, 7, 6, 5,
+                               4, 0, 3, 3, 7, 4, 3, 2, 6, 6, 7, 3, 4, 5, 1, 1, 0, 4};
 
-    CORE_ASSERT(shaderHandle.IsValid(), "Failed to load rotating cube shader");
+    Rendering::RHI::MeshDesc desc;
+    desc.layout = {{Rendering::RHI::DataType::Float3, "aPos", 0}};
+    desc.vertices = {Rendering::RHI::BufferType::Vertex, Rendering::RHI::BufferUsage::Static,
+                     Rendering::RHI::DataType::Float3, sizeof(vertices)};
+    desc.indices = {Rendering::RHI::BufferType::Index, Rendering::RHI::BufferUsage::Static,
+                    Rendering::RHI::DataType::UInt, sizeof(indices)};
+    desc.vertexCap = 8;
+    desc.indexCap = 36;
+    desc.vertexData = Storage{vertices};
+    desc.indexData = Storage{indices};
 
-    Rendering::RHI::BufferLayout meshLayout{
-        {Rendering::RHI::ShaderDataType::Float3, "aPos", 0}};
-
-    constexpr float vertices[] = {// front
-                                  -0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f,
-                                  0.5f, 0.5f, -0.5f, 0.5f, 0.5f,
-
-                                  // back
-                                  -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, -0.5f, 0.5f,
-                                  0.5f, -0.5f, -0.5f, 0.5f, -0.5f};
-
-    constexpr u32 indices[] = {// front
-                               0, 1, 2, 2, 3, 0,
-
-                               // right
-                               1, 5, 6, 6, 2, 1,
-
-                               // back
-                               5, 4, 7, 7, 6, 5,
-
-                               // left
-                               4, 0, 3, 3, 7, 4,
-
-                               // top
-                               3, 2, 6, 6, 7, 3,
-
-                               // bottom
-                               4, 5, 1, 1, 0, 4};
-
-    meshHandle = Assets::AssetManager::Create<Rendering::Mesh>(
-        "Cube", [vertices, indices, meshLayout]() {
-          return Rendering::RHI::IMesh::Create(std::span<const float>(vertices),
-                                               std::span<const u32>(indices),
-                                               meshLayout);
-        });
-
-    materialHandle = Assets::AssetManager::Create<Rendering::Material>(
-        "RGB", []() { return Rendering::RHI::IMaterial::Create(); });
+    m_Mesh = Assets::AssetManager::Create<Rendering::Mesh>("Cube", desc);
+    m_Material = Assets::AssetManager::Create<Rendering::Material>("RGB", {});
+    Rendering::RendererAPI::SubmitRenderTask([material = m_Material, shader = m_Shader](auto &) {
+      if (auto value = Assets::AssetManager::Resolve<Rendering::Material>(material))
+        value->SetShader(shader);
+    });
   }
 
   void OnRender(float dt) override {
     m_Time += dt;
-
-    auto shader =
-        Assets::AssetManager::Resolve<Rendering::Shader>(shaderHandle);
-
-    auto mesh = Assets::AssetManager::Resolve<Rendering::Mesh>(meshHandle);
-
-    auto material =
-        Assets::AssetManager::Resolve<Rendering::Material>(materialHandle);
-
-    if (!shader || !mesh || !material)
-      return;
-
-    const float redv = std::sin(m_Time) * 0.5f + 0.5f,
-                greenv = std::sin(m_Time * 0.7f) * 0.5f + 0.5f,
-                bluev = std::sin(m_Time * 1.3f) * 0.5f + 0.5f;
-
-    const glm::vec4 color{redv, greenv, bluev, 1.0f};
-
     const auto [width, height] = GetWindow().GetFramebufferSize();
     if (width <= 0 || height <= 0)
       return;
 
     const float aspect = static_cast<float>(width) / height;
+    const glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3{0.0f, 0.0f, -3.0f});
+    const glm::mat4 projection = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 100.0f);
+    const glm::mat4 model = glm::rotate(glm::mat4(1.0f), m_Time, glm::normalize(glm::vec3{0.5f, 1.0f, 0.25f}));
 
-    const glm::mat4 view = glm::translate(glm::mat4(1.0f),
-                                          glm::vec3{0.0f, 0.0f, -3.0f}),
-                    proj = glm::perspective(glm::radians(60.0f), aspect, 0.1f,
-                                            100.0f);
-
-    const glm::mat4 model = glm::rotate(
-        glm::mat4(1.0f), m_Time, glm::normalize(glm::vec3{0.5f, 1.0f, 0.25f}));
-
-    Rendering::SceneData scene{.framebufferSize = {width, height}};
-    scene.viewProjection = proj * view;
-    Rendering::Renderer::BeginFrame(scene);
-
-    material->SetShader(shaderHandle);
-    material->Set("uColor", color);
-
-    Rendering::Renderer::Submit(
-        Rendering::RHI::RenderCommand{mesh, material, model});
-    Rendering::Renderer::EndFrame();
+    Rendering::SceneData scene{.viewProjection = projection * view, .framebufferSize = {width, height}};
+    if (!Rendering::RendererAPI::BeginFrame(scene))
+      return;
+    Rendering::RHI::DrawCommand command{m_Mesh, m_Material, model};
+    command.ApplyOverride("uColor", glm::vec4{std::sin(m_Time) * 0.5f + 0.5f, std::sin(m_Time * 0.7f) * 0.5f + 0.5f,
+                                              std::sin(m_Time * 1.3f) * 0.5f + 0.5f, 1.0f});
+    Rendering::RendererAPI::SubmitDrawCommand(std::move(command));
+    Rendering::RendererAPI::EndFrame();
   }
 
 private:
-  Assets::AssetHandle<Rendering::Shader> shaderHandle;
-  Assets::AssetHandle<Rendering::Mesh> meshHandle;
-  Assets::AssetHandle<Rendering::Material> materialHandle;
-
-  float m_Time{0.0f};
+  Assets::AssetHandle<Rendering::Shader> m_Shader;
+  Assets::AssetHandle<Rendering::Mesh> m_Mesh;
+  Assets::AssetHandle<Rendering::Material> m_Material;
+  float m_Time{};
 };
 
 int main() {
   try {
     MyApp app;
     app.Run();
-    return EXIT_SUCCESS;
-  } catch (const std::exception &error) {
-    std::fprintf(stderr, "JupiterExample failed: %s\n", error.what());
-  } catch (...) {
-    std::fputs("JupiterExample failed: unknown exception\n", stderr);
-  }
-  return EXIT_FAILURE;
+  } catch (...) {}
 }

@@ -24,6 +24,7 @@ public:
     CORE_ASSERT(shader.IsValid(), "Invalid shader handle");
     CORE_ASSERT(m_Impl, "m_Impl is a nullptr");
     m_ShaderHandle = shader;
+    ++m_Revision;
 
     if (m_Impl)
       m_Impl->SetShader(m_ShaderHandle);
@@ -42,6 +43,7 @@ public:
 
   void SetParameter(const std::string &name, const RHI::ShaderParamValue &val) {
     auto [it, _] = m_Properties.insert_or_assign(name, val);
+    ++m_Revision;
 
     if (m_Impl)
       m_Impl->SetProperty(name, it->second);
@@ -53,12 +55,14 @@ public:
       return;
 
     m_Properties.erase(it);
+    ++m_Revision;
     if (m_Impl)
       m_Impl->RemoveProperty(name);
   }
 
   void Clear() {
     m_Properties.clear();
+    ++m_Revision;
     if (m_Impl)
       m_Impl->ClearProperties();
   }
@@ -86,11 +90,13 @@ public:
   }
 
   [[nodiscard]] bool IsValid() const noexcept { return m_Impl != nullptr; }
+  [[nodiscard]] u64 GetRevision() const noexcept { return m_Revision; }
 
 private:
   Assets::AssetHandle<Shader> m_ShaderHandle;
   std::unordered_map<std::string, RHI::ShaderParamValue> m_Properties;
   Scope<RHI::IMaterial> m_Impl;
+  u64 m_Revision{};
 
 private:
   friend class Assets::AssetManager;

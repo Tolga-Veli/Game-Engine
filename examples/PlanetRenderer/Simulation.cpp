@@ -24,18 +24,10 @@ void PlanetSimulation::Init() {
   m_HasLastStepTime = false;
 }
 
-void PlanetSimulation::SpawnPlanet() {
+void PlanetSimulation::SpawnPlanet(glm::vec2 position, float rad) {
   static std::mt19937 rng{std::random_device{}()};
 
-  std::uniform_real_distribution<float> xDist(0.0f, m_Width), yDist(0.0f, m_Height);
-
-  SpawnPlanet({xDist(rng), yDist(rng)});
-}
-
-void PlanetSimulation::SpawnPlanet(glm::vec2 position) {
-  static std::mt19937 rng{std::random_device{}()};
-
-  std::uniform_real_distribution<float> massDist(k_MinMass, k_MaxMass), radiusDist(k_MinRadius, k_MaxRadius);
+  std::uniform_real_distribution<float> massDist(k_MinMass, k_MaxMass), radiusDist(k_MinRadius, rad);
 
   const float radius = radiusDist(rng);
   position.x = glm::clamp(position.x, radius, std::max(radius, m_Width - radius));

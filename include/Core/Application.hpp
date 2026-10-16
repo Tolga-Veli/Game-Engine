@@ -31,21 +31,22 @@ protected:
   virtual void OnRender(float) {}
 
   virtual void OnEvent(Core::Event &);
+  virtual void ProcessEvents();
 
   Core::Window &GetWindow() noexcept { return m_Window; }
   const Core::Window &GetWindow() const noexcept { return m_Window; }
 
-  bool IsRunning() const noexcept { return m_Running; }
+  bool IsRunning() const noexcept { return m_Running.load(std::memory_order_acquire); }
 
 private:
   Core::Window m_Window;
   Rendering::RenderThread m_RenderThread;
-  bool m_Running{false}, m_Initialized{false};
+  std::atomic<bool> m_Running{false};
+  bool m_Initialized{false};
 
   [[nodiscard]] bool Init();
   [[nodiscard]] bool InitRenderThread();
 
   void Shutdown();
-  void ProcessEvents();
 };
 }; // namespace Jupiter

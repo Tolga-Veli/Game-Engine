@@ -6,7 +6,7 @@ namespace Jupiter::Rendering::RHI {
 
 struct MaterialData {};
 
-using MaterialParams = std::unordered_map<std::string_view, Rendering::RHI::ShaderParamValue>;
+using MaterialParams = std::unordered_map<std::string, Rendering::RHI::ShaderParamValue>;
 
 class IMaterial {
 public:

@@ -17,16 +17,14 @@ public:
   Sampler(Sampler &&) noexcept = default;
   Sampler &operator=(Sampler &&) noexcept = default;
 
-  [[nodiscard]]
-  bool IsValid() const noexcept {
-    return m_Impl != nullptr;
-  }
+  [[nodiscard]] bool IsValid() const noexcept { return m_Impl != nullptr; }
+  [[nodiscard]] RHI::ISampler &GetImpl() noexcept { return *m_Impl; }
 
 private:
   Scope<RHI::ISampler> m_Impl;
 
 private:
-  friend class AssetManager;
+  friend class Assets::AssetManager;
 
   explicit Sampler(Scope<RHI::ISampler> impl) : m_Impl(std::move(impl)) {}
 };

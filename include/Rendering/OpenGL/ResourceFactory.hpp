@@ -14,5 +14,6 @@ public:
   Scope<RHI::IMesh> CreateMesh(const RHI::MeshDesc &data) override;
   Scope<RHI::IShader> CreateShader(const RHI::ShaderSources &shaderSrcs) override;
   Scope<RHI::ITexture> CreateTexture(const RHI::TextureData &data) override;
+  Scope<RHI::ISampler> CreateSampler(const RHI::SamplerSpec &spec) override;
 };
 }; // namespace Jupiter::Rendering::OpenGL

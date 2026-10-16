@@ -1,4 +1,5 @@
 #include "Core/Application.hpp"
+#include "Rendering/RendererAPI.hpp"
 
 #include "PlanetRenderer.hpp"
 #include "Simulation.hpp"
@@ -12,57 +13,27 @@
 
 #include <cstdlib>
 #include <cstdio>
-#include <exception>
-#include <filesystem>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <memory>
 #include <mutex>
-#include <vector>
-
-namespace detail {
-// ImGui owns the data returned by GetDrawData() and reuses it on NewFrame().
-// Keep an independent copy alive until the render thread has drawn the overlay.
-struct ImGuiDrawDataSnapshot {
-  explicit ImGuiDrawDataSnapshot(const ImDrawData &source) {
-    drawData.Valid = source.Valid;
-    drawData.FrameCount = source.FrameCount;
-    drawData.DisplayPos = source.DisplayPos;
-    drawData.DisplaySize = source.DisplaySize;
-    drawData.FramebufferScale = source.FramebufferScale;
-    drawData.OwnerViewport = source.OwnerViewport;
-    drawData.Textures = source.Textures;
-
-    drawLists.reserve(source.CmdLists.Size);
-    for (const ImDrawList *drawList : source.CmdLists) {
-      drawLists.emplace_back(drawList->CloneOutput());
-      drawData.CmdLists.push_back(drawLists.back().get());
-      drawData.TotalIdxCount += drawLists.back()->IdxBuffer.Size;
-      drawData.TotalVtxCount += drawLists.back()->VtxBuffer.Size;
-    }
-    drawData.CmdListsCount = drawData.CmdLists.Size;
-  }
-
-  ImDrawData drawData;
-  std::vector<std::unique_ptr<ImDrawList>> drawLists;
-};
-
-} // namespace detail
 
 using namespace Jupiter;
 
 class PlanetSim final : public Application {
 public:
+  PlanetSim() = default;
+
   void OnRenderInit() override {
     Rendering::RendererAPI::SetVSync(Rendering::RHI::VSyncMode::Off);
     m_Renderer = PlanetRenderer(kPlanetCount);
 
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
+    io.IniFilename = nullptr;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
 #ifdef WIN32
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 #endif
 
     ImGui::StyleColorsDark();
@@ -73,9 +44,24 @@ public:
     style.FontScaleDpi = scale;
     io.ConfigDpiScaleFonts = true;
 
-    ImGui_ImplGlfw_InitForOpenGL(GetWindow().GetNativeHandle(), true);
     ImGui_ImplOpenGL3_Init();
     ImGui_ImplOpenGL3_CreateDeviceObjects();
+  }
+
+  void OnInit() override {
+    std::scoped_lock lock(m_ImGuiMutex);
+    ImGui_ImplGlfw_InitForOpenGL(GetWindow().GetNativeHandle(), true);
+  }
+
+  void OnShutdown() override {
+    std::scoped_lock lock(m_ImGuiMutex);
+    if (ImGui::GetCurrentContext() && ImGui::GetIO().BackendPlatformUserData)
+      ImGui_ImplGlfw_Shutdown();
+  }
+
+  void ProcessEvents() override {
+    std::scoped_lock lock(m_ImGuiMutex);
+    Application::ProcessEvents();
   }
 
   void OnUpdate(float dt) override {
@@ -88,8 +74,8 @@ public:
         const glm::vec2 position{float(m_CursorPosition.x) * float(framebufferWidth) / float(windowWidth),
                                  float(framebufferHeight) -
                                      float(m_CursorPosition.y) * float(framebufferHeight) / float(windowHeight)};
-        m_Simulation.SpawnPlanet(position);
 
+        m_Simulation.SpawnPlanet(position, 20.0f);
         m_SpawnTimer = kSpawnInterval;
       }
     }
@@ -99,6 +85,8 @@ public:
 
   void OnRender(float) override {
     const auto [width, height] = GetWindow().GetFramebufferSize();
+    if (width <= 0 || height <= 0)
+      return;
 
     if (width != m_Width || height != m_Height) {
       m_Simulation.SetBounds(float(width), float(height));
@@ -106,10 +94,22 @@ public:
       m_Height = height;
     }
 
-    std::shared_ptr<detail::ImGuiDrawDataSnapshot> guiFrame;
+    // Draw data and font textures remain owned by ImGui. Let the previous
+    // overlay finish before NewFrame() can reuse or resize them.
+    if (m_GUICompletion.valid()) {
+      while (m_GUICompletion.wait_for(std::chrono::milliseconds{1}) != std::future_status::ready)
+        if (Rendering::RendererAPI::IsStopping())
+          return;
+
+      if (Rendering::RendererAPI::IsStopping())
+        return;
+
+      m_GUICompletion.get();
+    }
+
+    ImDrawData *guiFrame;
     {
       std::scoped_lock lock(m_ImGuiMutex);
-      ImGui_ImplOpenGL3_NewFrame();
       ImGui_ImplGlfw_NewFrame();
       ImGui::NewFrame();
       m_ImGuiWantsMouse = ImGui::GetIO().WantCaptureMouse;
@@ -129,7 +129,7 @@ public:
       ImGui::End();
 
       ImGui::Render();
-      guiFrame = std::make_shared<detail::ImGuiDrawDataSnapshot>(*ImGui::GetDrawData());
+      guiFrame = ImGui::GetDrawData();
     }
 
     m_Renderer.SetRadiusScale(m_RadiusScale);
@@ -141,25 +141,32 @@ public:
                                .framebufferSize = {width, height},
                                .clearColor = {m_BackgroundColor.x, m_BackgroundColor.y, m_BackgroundColor.z, 1.0f}};
 
-    Rendering::RendererAPI::BeginFrame(scene);
+    if (!Rendering::RendererAPI::BeginFrame(scene))
+      return;
 
     const auto &p = m_Simulation.GetPlanets();
     const auto projection = glm::ortho(0.0f, static_cast<float>(width), 0.0f, static_cast<float>(height));
 
     m_Renderer.Draw(p.positions, p.velocities, p.radii, projection);
 
-    Rendering::RendererAPI::SubmitOverlay([this, guiFrame]() {
-      std::scoped_lock lock(m_ImGuiMutex);
-      ImGui_ImplOpenGL3_RenderDrawData(&guiFrame->drawData);
-    });
+    auto completion = std::make_shared<std::promise<void>>();
+    m_GUICompletion = completion->get_future();
+    if (!Rendering::RendererAPI::SubmitOverlay([this, guiFrame, completion]() {
+          std::scoped_lock lock(m_ImGuiMutex);
+          ImGui_ImplOpenGL3_RenderDrawData(guiFrame);
+          completion->set_value();
+        }))
+      return;
 
     Rendering::RendererAPI::EndFrame();
   }
 
   void OnRenderShutdown() override {
     std::scoped_lock lock(m_ImGuiMutex);
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
+    if (!ImGui::GetCurrentContext())
+      return;
+    if (ImGui::GetIO().BackendRendererUserData)
+      ImGui_ImplOpenGL3_Shutdown();
     ImGui::DestroyContext();
   }
 
@@ -197,6 +204,7 @@ private:
   PlanetRenderer m_Renderer;
 
   std::mutex m_ImGuiMutex;
+  std::future<void> m_GUICompletion;
   glm::dvec2 m_CursorPosition{0.0};
   float m_SpawnTimer{0.0f};
   bool m_ImGuiWantsMouse{false}, m_LeftMouseHeld{false};

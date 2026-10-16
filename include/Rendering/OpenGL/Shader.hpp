@@ -59,9 +59,9 @@ public:
   [[nodiscard]] std::string_view GetName() const noexcept override { return m_Name; }
   [[nodiscard]] const std::vector<RHI::ShaderParameter> &GetInputs() const noexcept override { return m_Inputs; }
 
-  [[nodiscard]] bool HasUniform(std::string_view name) const noexcept {
-    return glGetUniformLocation(m_RendererID, std::string{name}.c_str()) != -1;
-  }
+  [[nodiscard]] bool IsValid() const noexcept { return m_RendererID != 0; }
+  [[nodiscard]] u32 GetRendererID() const noexcept { return m_RendererID; }
+  [[nodiscard]] bool HasUniform(std::string_view name) { return GetUniformLoc(name) != -1; }
 
   void Bind() const noexcept { glUseProgram(m_RendererID); }
 
@@ -82,17 +82,24 @@ public:
   void Set(std::string_view name, const glm::mat4 &value) override;
   void Set(std::string_view name, const RHI::TextureBinding &binding) override;
 
-  void ResetTextureSlots() noexcept { m_NextTextureSlot = 0; }
+  void ResetTextureSlots(u32 first = 0) noexcept { m_NextTextureSlot = first; }
+  [[nodiscard]] u32 GetNextTextureSlot() const noexcept { return m_NextTextureSlot; }
 
 private:
   u32 m_RendererID{};
   std::string m_Name;
 
   std::vector<RHI::ShaderParameter> m_Inputs;
-  std::unordered_map<std::string_view, i32> m_UniformLocCache;
-  u32 m_NextTextureSlot{};
+  struct StringHash {
+    using is_transparent = void;
+    std::size_t operator()(std::string_view value) const noexcept { return std::hash<std::string_view>{}(value); }
+  };
 
-  void Compile(RHI::ShaderType type, std::string_view source);
+  std::unordered_map<std::string, i32, StringHash, std::equal_to<>> m_UniformLocCache;
+  u32 m_NextTextureSlot{};
+  i32 m_MaxTextureSlots{};
+
+  bool Compile(RHI::ShaderType type, std::string_view source);
   void Reflect();
 
   [[nodiscard]] i32 GetUniformLoc(std::string_view name);

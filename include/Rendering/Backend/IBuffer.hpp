@@ -22,10 +22,10 @@ enum class BufferUsage {
 };
 
 struct BufferDesc {
-  BufferType type;
-  BufferUsage usage;
-  DataType dtype;
-  std::size_t bytes;
+  BufferType type{BufferType::Vertex};
+  BufferUsage usage{BufferUsage::Static};
+  DataType dtype{DataType::None};
+  std::size_t bytes{};
 };
 
 using BufferData = std::span<const std::byte>;
@@ -40,6 +40,8 @@ public:
   IBuffer &operator=(IBuffer &&) = delete;
 
   virtual void SetData(const BufferData &buffer, std::size_t offset = 0) noexcept = 0;
+  // Call after GPU consumers when managing a stream buffer outside a Mesh.
+  virtual void MarkUsed() noexcept {}
 
 protected:
   IBuffer() = default;

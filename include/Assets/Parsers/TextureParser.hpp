@@ -4,6 +4,7 @@
 #include "Data/FileStream.hpp"
 
 #include <stb_image.h>
+#include <limits>
 
 namespace Jupiter::Assets {
 class TextureParser {
@@ -17,7 +18,9 @@ public:
     }
 
     i32 width{}, height{}, channels{};
-    stbi_set_flip_vertically_on_load(true);
+    if (buffer.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+      return {};
+    stbi_set_flip_vertically_on_load_thread(true);
     using ImageData = std::unique_ptr<stbi_uc, decltype(&stbi_image_free)>;
     ImageData data{stbi_load_from_memory(reinterpret_cast<const stbi_uc *>(buffer.data()), buffer.size(), &width,
                                          &height, &channels, 0),

@@ -3,6 +3,7 @@
 #include "Utils.hpp"
 
 #include <cstdio>
+#include <atomic>
 #include <format>
 #include <mutex>
 #include <source_location>
@@ -67,14 +68,14 @@ public:
     return instance;
   }
 
-  void SetMinLevel(LogLevel level) noexcept { m_minLevel = level; }
-  [[nodiscard]] LogLevel GetMinLevel() const noexcept { return m_minLevel; }
+  void SetMinLevel(LogLevel level) noexcept { m_minLevel.store(level, std::memory_order_relaxed); }
+  [[nodiscard]] LogLevel GetMinLevel() const noexcept { return m_minLevel.load(std::memory_order_relaxed); }
 
-  void SetColorEnabled(bool enabled) noexcept { m_colorEnabled = enabled; }
+  void SetColorEnabled(bool enabled) noexcept { m_colorEnabled.store(enabled, std::memory_order_relaxed); }
 
   template <typename... Args>
   void Log(LogLevel level, std::source_location loc, std::format_string<Args...> fmt, Args &&...args) {
-    if (level < m_minLevel)
+    if (level < GetMinLevel())
       return;
 
     std::string message = std::format(fmt, std::forward<Args>(args)...);
@@ -82,21 +83,22 @@ public:
     std::scoped_lock lock(m_mutex);
     FILE *stream = (level >= LogLevel::Warn) ? stderr : stdout;
 
-    if (m_colorEnabled) {
+    if (m_colorEnabled.load(std::memory_order_relaxed)) {
       std::fprintf(stream, "%s[%s]%s %s (%s:%d)\n", to_ansi_color(level).data(), to_string(level).data(),
                    k_ColorReset.data(), message.c_str(), loc.file_name(), static_cast<int>(loc.line()));
     } else {
       std::fprintf(stream, "[%s] %s (%s:%d)\n", to_string(level).data(), message.c_str(), loc.file_name(),
                    static_cast<int>(loc.line()));
     }
-    std::fflush(stream);
+    if (level >= LogLevel::Warn)
+      std::fflush(stream);
   }
 
 private:
   Logger() = default;
 
-  LogLevel m_minLevel = LogLevel::Trace;
-  bool m_colorEnabled = true;
+  std::atomic<LogLevel> m_minLevel{LogLevel::Trace};
+  std::atomic<bool> m_colorEnabled{true};
   std::mutex m_mutex;
 };
 

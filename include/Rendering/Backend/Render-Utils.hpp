@@ -75,7 +75,7 @@ enum class DataType : u32 {
   using enum DataType;
   switch (type) {
   case Bool:
-    return sizeof(bool);
+    return sizeof(i32);
 
   case Int:
     return sizeof(int);
@@ -169,7 +169,7 @@ using ShaderParamValue =
     std::variant<bool, i32, u32, f32, glm::vec2, glm::vec3, glm::vec4, glm::mat3, glm::mat4, TextureBinding>;
 
 struct ShaderParameter {
-  std::string_view name;
+  std::string name;
   DataType type;
 };
 } // namespace Jupiter::Rendering::RHI

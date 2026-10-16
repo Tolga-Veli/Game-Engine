@@ -19,6 +19,7 @@ inline GLenum JupiterToOpenGLBufferType(RHI::BufferType type) {
   case Storage:
     return GL_SHADER_STORAGE_BUFFER;
   }
+  return GL_NONE;
 }
 
 inline GLbitfield JupiterToOpenGLBufferUsage(RHI::BufferUsage usage) noexcept {
@@ -26,13 +27,14 @@ inline GLbitfield JupiterToOpenGLBufferUsage(RHI::BufferUsage usage) noexcept {
 
   switch (usage) {
   case Static:
-    return GL_NONE;
+    return GL_DYNAMIC_STORAGE_BIT;
   case Dynamic:
     // Allows glNamedBufferSubData();
     return GL_DYNAMIC_STORAGE_BIT;
   case Stream:
-    return GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+    return GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
   }
+  return GL_NONE;
 }
 
 class Buffer final : public RHI::IBuffer {
@@ -46,9 +48,10 @@ public:
   Buffer(Buffer &&other) noexcept;
   Buffer &operator=(Buffer &&other) noexcept;
 
-  void Reserve(std::size_t size) noexcept;
+  void Reserve(std::size_t size, bool preserve = true) noexcept;
   void SetData(const RHI::BufferData &data, std::size_t offset = 0) noexcept override;
   void Bind() const noexcept;
+  void MarkUsed() noexcept override;
 
   [[nodiscard]] RHI::BufferType GetType() const noexcept { return m_Type; }
   [[nodiscard]] RHI::BufferUsage GetUsage() const noexcept { return m_Usage; }
@@ -64,10 +67,12 @@ private:
 
   std::size_t m_Size{};
   std::byte *m_MappedData{};
+  GLsync m_LastUse{};
 
   void Allocate(std::size_t size, const void *initialData) noexcept;
 
   void Destroy() noexcept;
   void Unmap() noexcept;
+  void WaitForGPU() noexcept;
 };
 } // namespace Jupiter::Rendering::OpenGL

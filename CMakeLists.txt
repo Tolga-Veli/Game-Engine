@@ -35,6 +35,7 @@ file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
 )
 
 add_library(JupiterEngine STATIC ${SRC_FILES} ${HEADER_FILES} ${INL_FILES})
+target_sources(JupiterEngine PRIVATE "${INCLUDE_DIR}/Core/GLFW/GLFW_Window.cpp")
 
 target_include_directories(JupiterEngine
     PUBLIC "${INCLUDE_DIR}"
@@ -113,11 +114,11 @@ jupiter_enable_warnings(JupiterEngine)
 
 if(JUPITER_BUILD_TESTS)
     enable_testing()
-    add_executable(RenderFailureTests "tests/Rendering/RenderFailureTests.cpp")
-    target_link_libraries(RenderFailureTests PRIVATE JupiterEngine)
-    jupiter_enable_warnings(RenderFailureTests)
-    add_test(NAME RenderFailureTests COMMAND RenderFailureTests)
-    set_tests_properties(RenderFailureTests PROPERTIES
+    add_executable(RenderSchedulerTests "tests/Rendering/RenderSchedulerTests.cpp")
+    target_link_libraries(RenderSchedulerTests PRIVATE JupiterEngine)
+    jupiter_enable_warnings(RenderSchedulerTests)
+    add_test(NAME RenderSchedulerTests COMMAND RenderSchedulerTests)
+    set_tests_properties(RenderSchedulerTests PROPERTIES
         WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" TIMEOUT 30)
 endif()
 

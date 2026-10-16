@@ -12,19 +12,11 @@ namespace Jupiter::Data {
 inline consteval bool IsPowOf2(std::size_t sz) { return sz != 0 && (sz & (sz - 1)) == 0; }
 
 template <class T, std::size_t N>
-  requires(IsPowOf2(N))
+  requires(N > 1 && IsPowOf2(N))
 class SPSC_Queue {
 public:
-  SPSC_Queue() noexcept = default;
-  ~SPSC_Queue() noexcept(std::is_nothrow_destructible_v<T>) {
-    std::size_t tail = m_Tail.load(std::memory_order_relaxed);
-    const std::size_t head = m_Head.load(std::memory_order_relaxed);
-
-    while (tail != head) {
-      std::destroy_at(&m_Buffer[tail]);
-      tail = (tail + 1) & k_Mask;
-    }
-  }
+  SPSC_Queue() noexcept(std::is_nothrow_default_constructible_v<T>) = default;
+  ~SPSC_Queue() = default;
 
   SPSC_Queue(const SPSC_Queue &) = delete;
   SPSC_Queue &operator=(const SPSC_Queue &) = delete;
@@ -32,8 +24,8 @@ public:
   SPSC_Queue &operator=(SPSC_Queue &&) = delete;
 
   template <class U>
-    requires(std::constructible_from<T, U>)
-  bool try_push(U &&val) noexcept(std::is_nothrow_move_assignable_v<T>) {
+    requires(std::is_assignable_v<T &, U &&>)
+  bool try_push(U &&val) noexcept(std::is_nothrow_assignable_v<T &, U &&>) {
     const std::size_t head = m_Head.load(std::memory_order_relaxed), next = (head + 1) & k_Mask;
     if (next == m_TailCache) {
       m_TailCache = m_Tail.load(std::memory_order_acquire);

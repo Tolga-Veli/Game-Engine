@@ -67,8 +67,7 @@ public:
 
   void Init();
 
-  void SpawnPlanet();
-  void SpawnPlanet(glm::vec2 position);
+  void SpawnPlanet(glm::vec2 position, float rad);
 
   void SetBodyCount(u32 count) {
     m_Planets.resize(count);

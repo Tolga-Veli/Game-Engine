@@ -1,12 +1,16 @@
 #pragma once
 
 #include "Core/Backend/IWindow.hpp"
+#include "Core/Logging.hpp"
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
 
 namespace Jupiter::Core::detail {
 class GLFW_Window final : public detail::IWindow {
 public:
   GLFW_Window(const WindowOpts &opts);
   ~GLFW_Window() override;
+  void SetEventCallback(EventCallbackFn callback) override { m_EventCallback = std::move(callback); }
 
   void PollEvents() noexcept override { glfwPollEvents(); }
   bool ShouldClose() const noexcept override { return glfwWindowShouldClose(m_WindowHandle); }
@@ -54,7 +58,7 @@ private:
   GLFWwindow *m_WindowHandle{};
   WindowMode m_WindowMode;
   i32 m_RefreshRate;
-  std::string_view m_Title;
+  std::string m_Title;
 
   EventCallbackFn m_EventCallback;
 

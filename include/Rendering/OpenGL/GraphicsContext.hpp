@@ -27,10 +27,6 @@ public:
     if (!gladLoadGL(glfwGetProcAddress))
       throw std::runtime_error("GraphicsContext: gladLoadGL failed");
 
-    i32 width, height;
-    glfwGetFramebufferSize(m_Window, &width, &height);
-    glViewport(0, 0, width, height);
-
     LOG_INFO("OpenGL Context:");
     LOG_INFO("  Vendor:   {}", reinterpret_cast<const char *>(glGetString(GL_VENDOR)));
     LOG_INFO("  Renderer: {}", reinterpret_cast<const char *>(glGetString(GL_RENDERER)));

@@ -9,6 +9,7 @@
 #include "Rendering/Material.hpp"
 #include "Rendering/Mesh.hpp"
 #include "Rendering/Font.hpp"
+#include "Rendering/Sampler.hpp"
 #include "Rendering/Material.hpp"
 
 namespace Jupiter::Assets {
@@ -27,6 +28,8 @@ public:
       return m_FontPool;
     else if constexpr (type == AssetType::Material)
       return m_MaterialPool;
+    else if constexpr (type == AssetType::Sampler)
+      return m_SamplerPool;
     else
       static_assert(dependent_false<T>, "No AssetPool registered for this asset type");
   }
@@ -44,6 +47,8 @@ public:
       return m_FontPool;
     else if constexpr (type == AssetType::Material)
       return m_MaterialPool;
+    else if constexpr (type == AssetType::Sampler)
+      return m_SamplerPool;
     else
       static_assert(dependent_false<T>, "No AssetPool registered for this asset type");
   }
@@ -57,6 +62,7 @@ public:
     m_MeshPool.Clear();
     m_FontPool.Clear();
     m_MaterialPool.Clear();
+    m_SamplerPool.Clear();
   }
 
 private:
@@ -65,6 +71,7 @@ private:
   AssetPool<Rendering::Mesh> m_MeshPool;
   AssetPool<Rendering::Font> m_FontPool;
   AssetPool<Rendering::Material> m_MaterialPool;
+  AssetPool<Rendering::Sampler> m_SamplerPool;
 };
 
 } // namespace Jupiter::Assets
