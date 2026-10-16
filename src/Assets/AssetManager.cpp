@@ -8,28 +8,19 @@
 
 namespace Jupiter::Assets {
 void AssetManager::Init() {
+  CORE_ASSERT(IsRenderThread(), "AssetManager: Init() must run on the render thread");
   m_RenderThreadID = std::this_thread::get_id();
 
   const fs::path base = fs::current_path();
   fs::path assetsDir = base / "assets";
-  if (!fs::is_directory(assetsDir)) {
-    // Running an example from the CMake build directory is common; assets are
-    // copied next to the executable in build/bin/assets.
+  if (!fs::exists(assetsDir) || !fs::is_directory(assetsDir)) {
     const fs::path buildAssets = base / "bin" / "assets";
     if (fs::is_directory(buildAssets))
       assetsDir = buildAssets;
   }
-#ifdef JUPITER_SOURCE_ASSET_DIR
-  if (!fs::is_directory(assetsDir)) {
-    const fs::path sourceAssets = JUPITER_SOURCE_ASSET_DIR;
-    if (fs::is_directory(sourceAssets))
-      assetsDir = sourceAssets;
-  }
-#endif
-  if (!fs::exists(assetsDir) || !fs::is_directory(assetsDir)) {
-    LOG_ERROR("AssetManager: FAILED to find assets folder at '{}'",
-              assetsDir.string());
 
+  if (!fs::exists(assetsDir) || !fs::is_directory(assetsDir)) {
+    LOG_ERROR("AssetManager: FAILED to find assets folder at '{}'", assetsDir.string());
     m_RenderThreadID = {};
     return;
   }
@@ -38,8 +29,7 @@ void AssetManager::Init() {
 
   LOG_INFO("AssetManager: Root established at {}", m_AssetsDir.string());
 
-  m_WatcherThread =
-      std::jthread([this](std::stop_token st) { WatcherThreadMain(st); });
+  m_WatcherThread = std::jthread([this](std::stop_token st) { WatcherThreadMain(st); });
 
   // If anything might have been queued up by Create(Runtime) before
   // initializing
@@ -72,7 +62,18 @@ void AssetManager::Shutdown() noexcept {
   if (m_WatcherThread.joinable())
     m_WatcherThread.join();
 
-  ProcessRenderTasks();
+  // Cancel queued work instead of running factories during teardown. Destroy
+  // captures outside the queue lock, and cancel any work they enqueue too.
+  while (true) {
+    std::vector<RenderTask> cancelledTasks;
+    {
+      std::scoped_lock lock(m_RenderTasksMutex);
+      if (m_RenderTasks.empty())
+        break;
+      cancelledTasks.swap(m_RenderTasks);
+    }
+  }
+
   {
     std::unique_lock lock(m_RegistryMutex);
 
@@ -80,11 +81,6 @@ void AssetManager::Shutdown() noexcept {
     // They MUST be destroyed before the graphics context disappears.
     m_Registry.clear();
     m_AssetPools.Clear();
-  }
-
-  {
-    std::scoped_lock lock(m_RenderTasksMutex);
-    m_RenderTasks.clear();
   }
 
   {
@@ -118,19 +114,19 @@ void AssetManager::PollHotReload() {
     switch (job.type) {
     case Shader:
       ReloadAsset<Rendering::Shader>(job);
-      break;
+      return;
     case Texture:
       ReloadAsset<Rendering::Texture2D>(job);
-      break;
+      return;
     case Font:
       ReloadAsset<Rendering::Font>(job);
-      break;
+      return;
     case Mesh:
       ReloadAsset<Rendering::Mesh>(job);
-      break;
+      return;
     case Material:
       ReloadAsset<Rendering::Material>(job);
-      break;
+      return;
     default:
       UNREACHABLE("Unsupported job reload type");
       break;
@@ -156,8 +152,7 @@ void AssetManager::WatcherThreadMain(std::stop_token st) {
         if (record.runtimeCreated || record.path.empty())
           continue;
 
-        snapshot.push_back(
-            {id, record.type, record.path, record.lastWriteTime});
+        snapshot.push_back({id, record.type, record.path, record.lastWriteTime});
       }
     }
 
@@ -200,4 +195,13 @@ void AssetManager::WatcherThreadMain(std::stop_token st) {
   }
 }
 
+void AssetManager::QueueRenderTask(RenderTask task) {
+  {
+    std::scoped_lock lock(m_RenderTasksMutex);
+    m_RenderTasks.push_back(std::move(task));
+  }
+
+  if (m_RendererWakeup)
+    m_RendererWakeup();
+}
 } // namespace Jupiter::Assets

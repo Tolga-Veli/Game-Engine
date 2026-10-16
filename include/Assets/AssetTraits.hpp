@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Rendering/Backend/IFont.hpp"
+
 #include <concepts>
 #include <filesystem>
 #include <variant>
@@ -13,16 +15,7 @@ template <class T> struct AssetTraits {
 
 template <typename> inline constexpr bool dependent_false = false;
 
-struct FontLoadOptions {
-  float size = 16.0f;
-};
-
-struct MeshLoadOptions {
-  float scale = 1.0f;
-};
-
-using LoadOptions =
-    std::variant<std::monostate, FontLoadOptions, MeshLoadOptions>;
+using LoadOptions = std::variant<std::monostate, Rendering::RHI::FontOptions>;
 
 template <class T>
 concept Asset = requires {
@@ -31,8 +24,6 @@ concept Asset = requires {
 } && AssetTraits<T>::IsAsset;
 
 namespace detail {
-inline std::string NormalizePath(const fs::path &path) {
-  return path.lexically_normal().generic_string();
-}
+inline std::string NormalizePath(const fs::path &path) { return path.lexically_normal().generic_string(); }
 } // namespace detail
 } // namespace Jupiter::Assets

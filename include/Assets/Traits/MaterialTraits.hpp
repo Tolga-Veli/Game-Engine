@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Assets/AssetTraits.hpp"
+#include "Assets/Parsers/MaterialParser.hpp"
+
 #include "Rendering/Material.hpp"
 
 namespace Jupiter::Assets {
@@ -10,34 +12,15 @@ template <> struct AssetTraits<Rendering::Material> {
   using Asset = Rendering::Material;
   using Impl = Rendering::RHI::IMaterial;
   using LoadOptions = std::monostate;
+  using AssetData = Rendering::RHI::MaterialData;
 
   static constexpr AssetType type = AssetType::Material;
 
-  [[nodiscard]]
-  static Scope<Impl>
-  Create(Assets::AssetHandle<Rendering::Shader> shader,
-         const std::unordered_map<std::string, Rendering::RHI::ShaderParamValue>
-             &properties) {
-    auto impl = Impl::Create();
-
-    if (!impl)
-      return nullptr;
-
-    impl->SetShader(shader);
-
-    for (const auto &[name, value] : properties)
-      impl->SetProperty(name, value);
-
-    return impl;
+  [[nodiscard]] static Rendering::RHI::MaterialData LoadDataFromFile(const fs::path &path, const LoadOptions &) {
+    return MaterialParser::Parse(path);
   }
 
-  [[nodiscard]]
-  static Scope<Impl> LoadFromFile(const fs::path &, const LoadOptions &) {
-    // TODO:
-    UNREACHABLE("TODO:");
-  }
-
-  static AssetID MakeID(const fs::path &path, const LoadOptions &) {
+  [[nodiscard]] static AssetID MakeID(const fs::path &path, const LoadOptions &) {
     return HashAssetKey(detail::NormalizePath(path), type);
   }
 };

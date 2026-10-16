@@ -39,9 +39,9 @@ private:
   bool m_Handled{false};
 };
 
-#define EVENT_CLASS_TYPE(type)                                                 \
-  static EventType GetStaticType() noexcept { return EventType::type; }        \
-  EventType GetType() const noexcept override { return GetStaticType(); }      \
+#define EVENT_CLASS_TYPE(type)                                                                                         \
+  static EventType GetStaticType() noexcept { return EventType::type; }                                                \
+  EventType GetType() const noexcept override { return GetStaticType(); }                                              \
   std::string_view GetName() const noexcept override { return #type; }
 
 } // namespace Jupiter::Core

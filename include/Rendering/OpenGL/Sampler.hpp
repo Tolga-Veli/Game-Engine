@@ -46,10 +46,7 @@ public:
   Sampler(Sampler &&) noexcept;
   Sampler &operator=(Sampler &&) noexcept;
 
-  [[nodiscard]]
-  u32 GetRendererID() const noexcept {
-    return m_RendererID;
-  }
+  [[nodiscard]] u32 GetRendererID() const noexcept { return m_RendererID; }
 
   void Bind(u32 slot) const noexcept { glBindSampler(slot, m_RendererID); }
 

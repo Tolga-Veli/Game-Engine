@@ -11,6 +11,8 @@
 #include "imgui_impl_opengl3.h"
 
 #include <cstdlib>
+#include <cstdio>
+#include <exception>
 #include <filesystem>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <memory>
@@ -37,9 +39,7 @@ struct ImGuiDrawDataSnapshot {
       drawData.TotalIdxCount += drawLists.back()->IdxBuffer.Size;
       drawData.TotalVtxCount += drawLists.back()->VtxBuffer.Size;
     }
-#ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
     drawData.CmdListsCount = drawData.CmdLists.Size;
-#endif
   }
 
   ImDrawData drawData;
@@ -53,7 +53,7 @@ using namespace Jupiter;
 class PlanetSim final : public Application {
 public:
   void OnRenderInit() override {
-    GetGraphicsContext().SetVSync(Rendering::RHI::VSyncMode::Off);
+    Rendering::RendererAPI::SetVSync(Rendering::RHI::VSyncMode::Off);
     m_Renderer = PlanetRenderer(kPlanetCount);
 
     ImGui::CreateContext();
@@ -82,21 +82,13 @@ public:
     if (m_LeftMouseHeld) {
       m_SpawnTimer -= dt;
       if (m_SpawnTimer <= 0.0f) {
-        const auto [framebufferWidth, framebufferHeight] =
-            GetWindow().GetFramebufferSize();
-        const int windowWidth = GetWindow().GetWidth();
-        const int windowHeight = GetWindow().GetHeight();
+        const auto [framebufferWidth, framebufferHeight] = GetWindow().GetFramebufferSize();
+        const auto [windowWidth, windowHeight] = GetWindow().GetWindowSize();
 
-        if (framebufferWidth > 0 && framebufferHeight > 0 && windowWidth > 0 &&
-            windowHeight > 0) {
-          const glm::vec2 position{
-              float(m_CursorPosition.x) * float(framebufferWidth) /
-                  float(windowWidth),
-              float(framebufferHeight) - float(m_CursorPosition.y) *
-                                             float(framebufferHeight) /
-                                             float(windowHeight)};
-          m_Simulation.SpawnPlanet(position);
-        }
+        const glm::vec2 position{float(m_CursorPosition.x) * float(framebufferWidth) / float(windowWidth),
+                                 float(framebufferHeight) -
+                                     float(m_CursorPosition.y) * float(framebufferHeight) / float(windowHeight)};
+        m_Simulation.SpawnPlanet(position);
 
         m_SpawnTimer = kSpawnInterval;
       }
@@ -107,8 +99,6 @@ public:
 
   void OnRender(float) override {
     const auto [width, height] = GetWindow().GetFramebufferSize();
-    if (width <= 0 || height <= 0)
-      return;
 
     if (width != m_Width || height != m_Height) {
       m_Simulation.SetBounds(float(width), float(height));
@@ -130,8 +120,7 @@ public:
       ImGui::SeparatorText("Shader");
       ImGui::SliderFloat("Radius scale", &m_RadiusScale, 0.25f, 4.0f, "%.2f");
       ImGui::SliderFloat("Max speed", &m_MaxSpeed, 1.0f, 200.0f, "%.1f");
-      ImGui::SliderFloat("Glow intensity", &m_GlowIntensity, 0.0f, 3.0f,
-                         "%.2f");
+      ImGui::SliderFloat("Glow intensity", &m_GlowIntensity, 0.0f, 3.0f, "%.2f");
       ImGui::ColorEdit3("Color tint", &m_ColorTint.x);
       ImGui::Separator();
       ImGui::Text("%.1f FPS", ImGui::GetIO().Framerate);
@@ -140,8 +129,7 @@ public:
       ImGui::End();
 
       ImGui::Render();
-      guiFrame = std::make_shared<detail::ImGuiDrawDataSnapshot>(
-          *ImGui::GetDrawData());
+      guiFrame = std::make_shared<detail::ImGuiDrawDataSnapshot>(*ImGui::GetDrawData());
     }
 
     m_Renderer.SetRadiusScale(m_RadiusScale);
@@ -151,23 +139,21 @@ public:
 
     Rendering::SceneData scene{.viewProjection = glm::mat4(1.0f),
                                .framebufferSize = {width, height},
-                               .clearColor = {m_BackgroundColor.x,
-                                              m_BackgroundColor.y,
-                                              m_BackgroundColor.z, 1.0f}};
-    Rendering::Renderer::BeginFrame(scene);
+                               .clearColor = {m_BackgroundColor.x, m_BackgroundColor.y, m_BackgroundColor.z, 1.0f}};
+
+    Rendering::RendererAPI::BeginFrame(scene);
 
     const auto &p = m_Simulation.GetPlanets();
-    const auto projection = glm::ortho(0.0f, static_cast<float>(width), 0.0f,
-                                       static_cast<float>(height));
+    const auto projection = glm::ortho(0.0f, static_cast<float>(width), 0.0f, static_cast<float>(height));
 
     m_Renderer.Draw(p.positions, p.velocities, p.radii, projection);
 
-    Rendering::Renderer::SubmitOverlay([this, guiFrame]() {
+    Rendering::RendererAPI::SubmitOverlay([this, guiFrame]() {
       std::scoped_lock lock(m_ImGuiMutex);
       ImGui_ImplOpenGL3_RenderDrawData(&guiFrame->drawData);
     });
 
-    Rendering::Renderer::EndFrame();
+    Rendering::RendererAPI::EndFrame();
   }
 
   void OnRenderShutdown() override {
@@ -181,30 +167,25 @@ public:
     Application::OnEvent(event);
 
     Core::EventDispatcher dispatcher(event);
-    dispatcher.Dispatch<Core::MouseMovedEvent>(
-        [this](Core::MouseMovedEvent &mouseEvent) {
-          m_CursorPosition = {mouseEvent.GetX(), mouseEvent.GetY()};
-          return false;
-        });
+    dispatcher.Dispatch<Core::MouseMovedEvent>([this](Core::MouseMovedEvent &mouseEvent) {
+      m_CursorPosition = {mouseEvent.GetX(), mouseEvent.GetY()};
+      return false;
+    });
 
-    dispatcher.Dispatch<Core::MouseButtonPressedEvent>(
-        [this](Core::MouseButtonPressedEvent &mouseEvent) {
-          if (mouseEvent.GetButton() == Core::MouseButton::Left &&
-              !m_ImGuiWantsMouse) {
-            glfwGetCursorPos(GetWindow().GetNativeHandle(), &m_CursorPosition.x,
-                             &m_CursorPosition.y);
-            m_LeftMouseHeld = true;
-            m_SpawnTimer = 0.0f;
-          }
-          return false;
-        });
+    dispatcher.Dispatch<Core::MouseButtonPressedEvent>([this](Core::MouseButtonPressedEvent &mouseEvent) {
+      if (mouseEvent.GetButton() == Core::MouseButton::Left && !m_ImGuiWantsMouse) {
+        glfwGetCursorPos(GetWindow().GetNativeHandle(), &m_CursorPosition.x, &m_CursorPosition.y);
+        m_LeftMouseHeld = true;
+        m_SpawnTimer = 0.0f;
+      }
+      return false;
+    });
 
-    dispatcher.Dispatch<Core::MouseButtonReleasedEvent>(
-        [this](Core::MouseButtonReleasedEvent &mouseEvent) {
-          if (mouseEvent.GetButton() == Core::MouseButton::Left)
-            m_LeftMouseHeld = false;
-          return false;
-        });
+    dispatcher.Dispatch<Core::MouseButtonReleasedEvent>([this](Core::MouseButtonReleasedEvent &mouseEvent) {
+      if (mouseEvent.GetButton() == Core::MouseButton::Left)
+        m_LeftMouseHeld = false;
+      return false;
+    });
   }
 
 private:
@@ -219,22 +200,12 @@ private:
   glm::dvec2 m_CursorPosition{0.0};
   float m_SpawnTimer{0.0f};
   bool m_ImGuiWantsMouse{false}, m_LeftMouseHeld{false};
-  ImVec4 m_BackgroundColor{0.02f, 0.025f, 0.04f, 1.0f},
-      m_ColorTint{1.0f, 1.0f, 1.0f, 1.0f};
+  ImVec4 m_BackgroundColor{0.02f, 0.025f, 0.04f, 1.0f}, m_ColorTint{1.0f, 1.0f, 1.0f, 1.0f};
 
   float m_RadiusScale{1.5f}, m_MaxSpeed{75.0f}, m_GlowIntensity{1.0f};
 };
 
 int main() {
-#if defined(__linux__)
-  // WSL exposes the Windows GPU through Direct3D 12. Some Mesa/WSLg
-  // combinations otherwise select llvmpipe even though /dev/dxg is present.
-  // This must happen before Application constructs GLFW's OpenGL context.
-  if (std::filesystem::exists("/dev/dxg") &&
-      std::getenv("GALLIUM_DRIVER") == nullptr)
-    setenv("GALLIUM_DRIVER", "d3d12", 0);
-#endif
-
   PlanetSim app;
   app.Run();
 }

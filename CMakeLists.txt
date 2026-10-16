@@ -8,6 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(JUPITER_BUILD_EXAMPLE "Build the default Jupiter example application" ON)
 option(JUPITER_BUILD_PLANET_EXAMPLE "Build the planet simulation example" ON)
+option(JUPITER_BUILD_TESTS "Build headless engine regression tests" OFF)
 
 # Single-config generators (Makefiles, Ninja) have an empty CMAKE_BUILD_TYPE
 # unless you pass -DCMAKE_BUILD_TYPE explicitly, which silently breaks the
@@ -21,19 +22,19 @@ set(LIB_DIR "${PROJECT_SOURCE_DIR}/libs")
 set(INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
 set(SRC_DIR "${PROJECT_SOURCE_DIR}/src")
 
-file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
+file(GLOB_RECURSE HEADER_FILES CONFIGURE_DEPENDS
     "${INCLUDE_DIR}/*.hpp"
-    "${SRC_DIR}/*.cpp"
-    "${SRC_DIR}/*.inl"
 )
 
-list(FILTER SRC_FILES EXCLUDE REGEX ".*/main\\.cpp$")
+file(GLOB_RECURSE INL_FILES CONFIGURE_DEPENDS
+  "${SRC_DIR}/*.inl"
+)
 
-# Legacy experiments are intentionally kept in the repository, but they are
-# not engine sources and may contain their own main() when enabled.
-list(FILTER SRC_FILES EXCLUDE REGEX ".*/test[0-9]*\\.cpp$")
+file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
+    "${SRC_DIR}/*.cpp"
+)
 
-add_library(JupiterEngine STATIC ${SRC_FILES})
+add_library(JupiterEngine STATIC ${SRC_FILES} ${HEADER_FILES} ${INL_FILES})
 
 target_include_directories(JupiterEngine
     PUBLIC "${INCLUDE_DIR}"
@@ -109,6 +110,16 @@ function(jupiter_enable_warnings target)
 endfunction()
 
 jupiter_enable_warnings(JupiterEngine)
+
+if(JUPITER_BUILD_TESTS)
+    enable_testing()
+    add_executable(RenderFailureTests "tests/Rendering/RenderFailureTests.cpp")
+    target_link_libraries(RenderFailureTests PRIVATE JupiterEngine)
+    jupiter_enable_warnings(RenderFailureTests)
+    add_test(NAME RenderFailureTests COMMAND RenderFailureTests)
+    set_tests_properties(RenderFailureTests PROPERTIES
+        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" TIMEOUT 30)
+endif()
 
 if(MSVC)
     target_compile_options(JupiterEngine PRIVATE $<$<CONFIG:Release>:/O2>)

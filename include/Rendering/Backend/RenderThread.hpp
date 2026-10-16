@@ -7,38 +7,38 @@
 namespace Jupiter::Rendering {
 
 struct RenderThreadHooks {
-  // Runs once, on the render thread, before any frames are processed. This is
-  // where the context gets made and every resource (shaders,
-  // textures, meshes, materials) gets created - Start() blocks the calling
-  // thread until this has finished, so callers can treat render-thread startup
-  // as a normal synchronous step
-  std::function<bool()> Init;
-
-  // Shutdown runs once, on the render thread, after the last frame has been
-  // rendered.
-  std::function<void()> Shutdown;
-
-  // Runs on the render thread before it waits for the next frame. Use this for
-  // queued render-thread work such as asset creation and hot reloads.
-  std::function<void()> OnFrame;
-
-  // Runs after a frame has been rendered. Presentation belongs here so the
-  // newly rendered back buffer is the one that gets displayed.
-  std::function<void()> Present;
+  std::function<bool()> Init;     // runs on the render thread; false = abort startup
+  std::function<void()> Shutdown; // runs on the render thread, GL context still alive
+  std::function<void()> OnFrame;  // called in a loop until Stop()
 };
 
 class RenderThread {
 public:
-  // Blocks until hooks.Init has finished running on the render thread
+  RenderThread() = default;
+  ~RenderThread() noexcept { Stop(); }
+
+  RenderThread(const RenderThread &) = delete;
+  RenderThread &operator=(const RenderThread &) = delete;
+  RenderThread(RenderThread &&) = delete;
+  RenderThread &operator=(RenderThread &&) = delete;
+
   [[nodiscard]] bool Start(RenderThreadHooks hooks);
 
-  ~RenderThread() { Stop(); }
+  // WARNING: Does NOT wake a blocked OnFrame -> call RendererAPI::RequestStop() first.
+  void Stop() noexcept;
 
-  // Signals the render thread to finish up and joins it.
-  void Stop();
+  [[nodiscard]] bool HasFailed() const noexcept { return m_Failed.load(std::memory_order_acquire); }
+
+  // Game thread: call once per frame so a render-thread exception surfaces instead of hanging.
+  void RethrowIfFailed();
 
 private:
   std::thread m_Thread;
-  std::atomic<bool> m_Stopping{false};
+  std::atomic<bool> m_Stopping{false}, m_Failed{false};
+
+  std::mutex m_FailureMutex;
+  std::exception_ptr m_Failure;
+
+  void RecordFailure(std::exception_ptr failure) noexcept;
 };
 } // namespace Jupiter::Rendering

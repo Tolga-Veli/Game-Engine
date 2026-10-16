@@ -1,4 +1,3 @@
-#ifdef TEST1
 #include <print>
 #include <chrono>
 #include <cmath>
@@ -207,8 +206,7 @@ bool mouseHeld = false, firstMouse = true;
 double lastMouseX = 0.0, lastMouseY = 0.0;
 float yaw = 0.0f, pitch = 0.0f;
 
-static void KeyCallback(GLFWwindow *window, i32 key, i32 scancode, i32 action,
-                        i32 mods) {
+static void KeyCallback(GLFWwindow *window, i32 key, i32 scancode, i32 action, i32 mods) {
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
     glfwSetWindowShouldClose(window, GLFW_TRUE);
 
@@ -222,8 +220,7 @@ static void ResizeCallback(GLFWwindow *window, i32 width, i32 height) {
   (void)window;
 }
 
-static void MouseButtonCallback(GLFWwindow *window, i32 button, i32 action,
-                                i32 mods) {
+static void MouseButtonCallback(GLFWwindow *window, i32 button, i32 action, i32 mods) {
   if (button == GLFW_MOUSE_BUTTON_LEFT) {
     if (action == GLFW_PRESS) {
       mouseHeld = true;
@@ -247,8 +244,7 @@ static void MouseCallback(GLFWwindow *window, double xpos, double ypos) {
     return;
   }
 
-  const float dx = static_cast<float>(xpos - lastMouseX),
-              dy = static_cast<float>(ypos - lastMouseY);
+  const float dx = static_cast<float>(xpos - lastMouseX), dy = static_cast<float>(ypos - lastMouseY);
 
   lastMouseX = xpos;
   lastMouseY = ypos;
@@ -269,8 +265,7 @@ int main() {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-  GLFWwindow *window =
-      glfwCreateWindow(WIDTH, HEIGHT, TITLE.c_str(), nullptr, nullptr);
+  GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, TITLE.c_str(), nullptr, nullptr);
 
   if (!window) {
     std::println("Failed to craete glfw window");
@@ -290,11 +285,9 @@ int main() {
     return -1;
   }
 
-  std::println("OpenGL: {}",
-               reinterpret_cast<const char *>(glGetString(GL_VERSION)));
+  std::println("OpenGL: {}", reinterpret_cast<const char *>(glGetString(GL_VERSION)));
 
-  std::println("Renderer: {}",
-               reinterpret_cast<const char *>(glGetString(GL_RENDERER)));
+  std::println("Renderer: {}", reinterpret_cast<const char *>(glGetString(GL_RENDERER)));
 
   i32 framebufferWidth, framebufferHeight;
   glfwGetFramebufferSize(window, &framebufferWidth, &framebufferHeight);
@@ -381,8 +374,7 @@ int main() {
     glEnableVertexAttribArray(0);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
-                 GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
   }
 
   i32 modelLoc = glGetUniformLocation(shaderProgram, "uModel");
@@ -401,8 +393,7 @@ int main() {
     return -1;
   }
 
-  const Mat4 view = translate(0.0f, 0.0f, -3.0f),
-             proj = perspective(60.0f * PI / 180.0f, aspect, 0.1f, 100.0f);
+  const Mat4 view = translate(0.0f, 0.0f, -3.0f), proj = perspective(60.0f * PI / 180.0f, aspect, 0.1f, 100.0f);
   {
     glUseProgram(shaderProgram);
 
@@ -420,15 +411,13 @@ int main() {
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
 
-    const float seconds =
-        std::chrono::duration<float>(Clock::now() - start).count();
+    const float seconds = std::chrono::duration<float>(Clock::now() - start).count();
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(shaderProgram);
 
-    const float redv = std::sin(seconds) * 0.5f + 0.5f,
-                greenv = std::sin(seconds * 0.7f) * 0.5f + 0.5f,
+    const float redv = std::sin(seconds) * 0.5f + 0.5f, greenv = std::sin(seconds * 0.7f) * 0.5f + 0.5f,
                 bluev = std::sin(seconds * 1.3f) * 0.5f + 0.5f;
 
     pitch = std::clamp(pitch, -1.5f, 1.5f);
@@ -453,4 +442,3 @@ int main() {
   glfwTerminate();
   return 0;
 }
-#endif

@@ -2,131 +2,179 @@
 
 #include "Events/EventDispatcher.hpp"
 #include "Events/WindowEvent.hpp"
-#include "Rendering/Backend/IGraphicsContext.hpp"
 #include "Rendering/Backend/RenderThread.hpp"
 
 #include "Assets/AssetManager.hpp"
 
 #include <chrono>
+#include <exception>
 
 namespace Jupiter {
 
-Application::Application(const ApplicationOpts &opts) {
-  m_Window = Core::Window::Create(opts.window_opts);
-
-  // Routes every callback through dispatcher so user can just define on event
-  m_Window->SetEventCallback([this](Core::Event &event) { OnEvent(event); });
+Application::Application(const Core::WindowOpts &opts) : m_Window(opts) {
+  m_Window.SetEventCallback([this](Core::Event &event) { OnEvent(event); });
 }
 
 Application::~Application() {
-  if (m_Running)
-    Shutdown();
+  try {
+    if (m_Initialized)
+      Shutdown();
+  } catch (...) {}
 }
 
 void Application::Run() {
-  if (!Initialize())
-    return;
+  try {
+    if (!Init())
+      return;
 
-  using Clock = std::chrono::steady_clock;
-  auto lastTime = Clock::now();
+    using Clock = std::chrono::steady_clock;
+    auto lastTime = Clock::now();
 
-  while (m_Running) {
-    const auto now = Clock::now();
-    const float dt = std::chrono::duration<float>(now - lastTime).count();
-    lastTime = now;
+    while (m_Running && !m_RenderThread.HasFailed()) {
+      const auto now = Clock::now();
+      const float dt = std::chrono::duration<float>(now - lastTime).count();
+      lastTime = now;
 
-    ProcessEvents();
+      ProcessEvents();
 
-    if (!m_Running)
-      break;
+      if (!m_Running || m_RenderThread.HasFailed())
+        break;
 
-    OnUpdate(dt);
+      OnUpdate(dt);
 
-    if (!m_Running)
-      break;
+      if (!m_Running || m_RenderThread.HasFailed())
+        break;
 
-    OnRender(dt);
+      OnRender(dt);
 
-    if (m_Window->ShouldClose())
-      Close();
+      if (m_Window.ShouldClose())
+        Close();
+    }
+  } catch (...) {
+    const auto failure = std::current_exception();
+
+    if (m_Initialized) {
+      try {
+        Shutdown();
+      } catch (...) {}
+    } else
+      m_RenderThread.Stop();
+
+    std::rethrow_exception(failure);
   }
 
-  Shutdown();
+  if (m_Initialized)
+    Shutdown();
+
+  m_RenderThread.RethrowIfFailed();
 }
 
 void Application::Close() noexcept { m_Running = false; }
 
-bool Application::Initialize() {
+bool Application::Init() {
   // Render thread owns the Renderer and context and must be responsible for the
   // creation of resources in asset managers
-  if (!InitializeRenderThread())
+  if (!InitRenderThread())
     return false;
 
+  m_Initialized = true;
   OnInit();
 
   m_Running = true;
   return true;
 }
 
-bool Application::InitializeRenderThread() {
+bool Application::InitRenderThread() {
   Rendering::RenderThreadHooks hooks;
 
   hooks.Init = [this]() {
-    m_GraphicsContext =
-        Rendering::RHI::IGraphicsContext::Create(m_Window->GetNativeHandle());
+    bool rendererAttempted = false, assetsInitialized = false, renderInitStarted = false;
+    try {
+      rendererAttempted = true;
+      Rendering::RendererAPI::Init(m_Window.GetNativeHandle());
 
-    if (!m_GraphicsContext || !m_GraphicsContext->Init()) {
-      LOG_FATAL("Application: graphics context failed to initialize");
-      if (m_GraphicsContext) {
-        m_GraphicsContext->Shutdown();
-        m_GraphicsContext.reset();
-      }
-      return false;
+      auto &assets = Assets::AssetManager::GetInstance();
+      assets.SetRendererWakeup([] { Rendering::RendererAPI::Wake(); });
+      assets.Init();
+      assetsInitialized = true;
+
+      renderInitStarted = true;
+      OnRenderInit();
+      return true;
+    } catch (...) {
+      const auto failure = std::current_exception();
+      if (renderInitStarted)
+        try {
+          OnRenderShutdown();
+        } catch (...) {}
+
+      if (assetsInitialized)
+        try {
+          Assets::AssetManager::GetInstance().Shutdown();
+        } catch (...) {}
+
+      if (rendererAttempted)
+        try {
+          Rendering::RendererAPI::Shutdown();
+        } catch (...) {}
+
+      std::rethrow_exception(failure);
     }
-
-    Rendering::Renderer::Init();
-    auto &assets = Assets::AssetManager::GetInstance();
-    assets.SetRendererWakeup([]() { Rendering::Renderer::Wake(); });
-    assets.Init();
-
-    OnRenderInit();
-    return true;
   };
 
   hooks.OnFrame = []() {
-    Assets::AssetManager::GetInstance().ProcessRenderTasks();
-    Assets::AssetManager::GetInstance().PollHotReload();
+    auto &assets = Assets::AssetManager::GetInstance();
+    assets.ProcessRenderTasks();
+    assets.PollHotReload();
   };
 
-  hooks.Present = [this]() { m_GraphicsContext->OnFrame(); };
-
   hooks.Shutdown = [this]() {
-    OnRenderShutdown();
-    Assets::AssetManager::GetInstance().Shutdown();
-    Rendering::Renderer::Shutdown();
-    m_GraphicsContext->Shutdown();
-    m_GraphicsContext.reset();
+    std::exception_ptr failure;
+
+    auto attempt = [&failure](auto &&op) {
+      try {
+        op();
+      } catch (...) {
+        if (!failure)
+          failure = std::current_exception();
+      }
+    };
+
+    attempt([this] { OnRenderShutdown(); });
+    attempt([] { Assets::AssetManager::GetInstance().Shutdown(); });
+    attempt([] { Rendering::RendererAPI::Shutdown(); });
+
+    if (failure)
+      std::rethrow_exception(failure);
   };
 
   return m_RenderThread.Start(std::move(hooks));
 }
 
 void Application::Shutdown() {
-  OnShutdown();
-  m_RenderThread.Stop();
   m_Running = false;
+  std::exception_ptr failure;
+
+  try {
+    OnShutdown();
+  } catch (...) { failure = std::current_exception(); }
+
+  m_RenderThread.Stop();
+  m_Initialized = false;
+
+  if (failure)
+    std::rethrow_exception(failure);
 }
 
-void Application::ProcessEvents() { m_Window->PollEvents(); }
+void Application::ProcessEvents() { m_Window.PollEvents(); }
 
 void Application::OnEvent(Core::Event &event) {
   Core::EventDispatcher dispatcher(event);
 
-  dispatcher.Dispatch<Core::WindowCloseEvent>(
-      [this](Core::WindowCloseEvent &) -> bool {
-        Close();
-        return true;
-      });
+  dispatcher.Dispatch<Core::WindowCloseEvent>([this](Core::WindowCloseEvent &) -> bool {
+    Close();
+    return true;
+  });
 }
 
 } // namespace Jupiter

@@ -11,8 +11,7 @@ using namespace Jupiter;
 struct Planets {
   Planets() = default;
 
-  explicit Planets(u32 cnt)
-      : positions(cnt), velocities(cnt), masses(cnt), radii(cnt) {}
+  explicit Planets(u32 cnt) : positions(cnt), velocities(cnt), masses(cnt), radii(cnt) {}
 
   void resize(u32 cnt) {
     positions.resize(cnt);
@@ -61,10 +60,8 @@ struct Planets {
 class PlanetSimulation {
 public:
   PlanetSimulation() = default;
-  PlanetSimulation(u32 planetCount, float width = 1280.0f,
-                   float height = 720.0f)
-      : m_Planets(planetCount), m_Accelerations(planetCount), m_Width(width),
-        m_Height(height) {
+  PlanetSimulation(u32 planetCount, float width = 1280.0f, float height = 720.0f)
+      : m_Planets(planetCount), m_Accelerations(planetCount), m_Width(width), m_Height(height) {
     Init();
   }
 
@@ -99,10 +96,8 @@ private:
   // k_MaxSubsteps - prevent spiral-of-death
   //
   // k_InitialVelocityScale - < 1 keeps the initial system more thightly bound
-  static constexpr float k_Gravity = 6.6743e-1, k_Softening = 4.0f,
-                         k_Bounce = 0.9f, k_FixedDt = 1.0f / 60.0f,
-                         k_MaxFrameDt = 0.005f, k_MinMass = 100.0f,
-                         k_MaxMass = 10000.0f, k_MinRadius = 2.0f,
+  static constexpr float k_Gravity = 6.6743e-1, k_Softening = 4.0f, k_Bounce = 0.9f, k_FixedDt = 1.0f / 60.0f,
+                         k_MaxFrameDt = 0.005f, k_MinMass = 100.0f, k_MaxMass = 10000.0f, k_MinRadius = 2.0f,
                          k_MaxRadius = 4.0f, k_InitialVelocityScale = 1.0f;
 
   static constexpr std::size_t k_MaxSubsteps = 8;

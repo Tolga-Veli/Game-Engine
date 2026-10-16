@@ -1,22 +1,19 @@
 #pragma once
 
-#include "ShaderTypes.hpp"
+#include "Render-Utils.hpp"
 
 #include <glm/glm.hpp>
 
 namespace Jupiter::Rendering::RHI {
+
+using ShaderSources = std::array<std::string, EnumToSize(ShaderType::Count)>;
+
 class IShader {
 public:
-  using ShaderSources = std::array<std::string, EnumToSize(ShaderType::Count)>;
-
   virtual ~IShader() = default;
 
-  static Scope<IShader> Create(const ShaderSources &shaderSrcs);
-
   [[nodiscard]] virtual std::string_view GetName() const noexcept = 0;
-
-  [[nodiscard]]
-  virtual const std::vector<ShaderParameter> &GetInputs() const noexcept = 0;
+  [[nodiscard]] virtual const std::vector<ShaderParameter> &GetInputs() const noexcept = 0;
 
   virtual void Set(std::string_view name, bool value) = 0;
   virtual void Set(std::string_view name, i32 value) = 0;

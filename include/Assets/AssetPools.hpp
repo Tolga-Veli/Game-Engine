@@ -14,7 +14,7 @@
 namespace Jupiter::Assets {
 class AssetPools {
 public:
-  template <typename T> AssetPool<T> &GetPool() noexcept {
+  template <Asset T> AssetPool<T> &GetPool() noexcept {
     constexpr auto type = AssetTraits<T>::type;
 
     if constexpr (type == AssetType::Texture)
@@ -28,11 +28,10 @@ public:
     else if constexpr (type == AssetType::Material)
       return m_MaterialPool;
     else
-      static_assert(dependent_false<T>,
-                    "No AssetPool registered for this asset type");
+      static_assert(dependent_false<T>, "No AssetPool registered for this asset type");
   }
 
-  template <typename T> const AssetPool<T> &GetPool() const noexcept {
+  template <Asset T> const AssetPool<T> &GetPool() const noexcept {
     constexpr auto type = AssetTraits<T>::type;
 
     if constexpr (type == AssetType::Texture)
@@ -46,8 +45,7 @@ public:
     else if constexpr (type == AssetType::Material)
       return m_MaterialPool;
     else
-      static_assert(dependent_false<T>,
-                    "No AssetPool registered for this asset type");
+      static_assert(dependent_false<T>, "No AssetPool registered for this asset type");
   }
 
   // WARNING:

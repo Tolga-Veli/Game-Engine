@@ -26,8 +26,7 @@ public:
   void SetGlowIntensity(float intensity);
   void SetColorTint(const glm::vec3 &tint);
 
-  void Draw(std::span<const glm::vec2> positions,
-            std::span<const glm::vec2> velocities, std::span<const float> radii,
+  void Draw(std::span<const glm::vec2> positions, std::span<const glm::vec2> velocities, std::span<const float> radii,
             const glm::mat4 &viewProjection);
 
 private:

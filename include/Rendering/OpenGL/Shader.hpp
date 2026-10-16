@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Core/Assert.hpp"
 #include "Rendering/Backend/IShader.hpp"
 
 #include <unordered_map>
@@ -10,50 +9,46 @@
 
 namespace Jupiter::Rendering::OpenGL {
 
-inline RHI::ShaderDataType OpenGLToJupiterShaderDataType(GLenum type) {
+inline RHI::DataType OpenGLToJupiterDataType(GLenum type) {
+  using enum RHI::DataType;
   switch (type) {
   case GL_FLOAT:
-    return RHI::ShaderDataType::Float;
-
+    return Float;
   case GL_FLOAT_VEC2:
-    return RHI::ShaderDataType::Float2;
-
+    return Float2;
   case GL_FLOAT_VEC3:
-    return RHI::ShaderDataType::Float3;
-
+    return Float3;
   case GL_FLOAT_VEC4:
-    return RHI::ShaderDataType::Float4;
+    return Float4;
 
   case GL_INT:
-    return RHI::ShaderDataType::Int;
-
+    return Int;
   case GL_UNSIGNED_INT:
-    return RHI::ShaderDataType::UInt;
+    return UInt;
 
   case GL_FLOAT_MAT3:
-    return RHI::ShaderDataType::Mat3;
-
+    return Mat3;
   case GL_FLOAT_MAT4:
-    return RHI::ShaderDataType::Mat4;
+    return Mat4;
 
   case GL_SAMPLER_2D:
-    return RHI::ShaderDataType::Texture2D;
+    return Texture2D;
 
   case GL_SAMPLER_CUBE:
     // Cubemap resources are not represented by the RHI yet. Reflection must
     // not crash merely because a shader contains an unsupported uniform.
-    return RHI::ShaderDataType::None;
+    return None;
 
   default:
     // Reflection is descriptive, not a validation step. Types that are not
     // exposed by ShaderParamValue are safely omitted from the material UI.
-    return RHI::ShaderDataType::None;
+    return None;
   }
 }
 
 class Shader final : public RHI::IShader {
 public:
-  explicit Shader(const ShaderSources &shaderSrcs);
+  explicit Shader(const RHI::ShaderSources &shaderSrcs);
   ~Shader() override;
 
   Shader(const Shader &) = delete;
@@ -61,24 +56,17 @@ public:
   Shader(Shader &&) = delete;
   Shader &operator=(Shader &&) = delete;
 
-  [[nodiscard]]
-  std::string_view GetName() const noexcept override {
-    return m_Name;
-  }
+  [[nodiscard]] std::string_view GetName() const noexcept override { return m_Name; }
+  [[nodiscard]] const std::vector<RHI::ShaderParameter> &GetInputs() const noexcept override { return m_Inputs; }
 
-  [[nodiscard]]
-  const std::vector<RHI::ShaderParameter> &GetInputs() const noexcept override {
-    return m_Inputs;
-  }
-
-  void Set(std::string_view name, const RHI::ShaderParamValue &value) {
-
-    std::visit([this, name](const auto &value) { Set(name, value); }, value);
+  [[nodiscard]] bool HasUniform(std::string_view name) const noexcept {
+    return glGetUniformLocation(m_RendererID, std::string{name}.c_str()) != -1;
   }
 
   void Bind() const noexcept { glUseProgram(m_RendererID); }
-  [[nodiscard]] bool HasUniform(std::string_view name) const noexcept {
-    return glGetUniformLocation(m_RendererID, std::string{name}.c_str()) != -1;
+
+  void Set(std::string_view name, const RHI::ShaderParamValue &value) {
+    std::visit([this, name](const auto &value) { Set(name, value); }, value);
   }
 
   void Set(std::string_view name, bool value) override;
@@ -101,21 +89,14 @@ private:
   std::string m_Name;
 
   std::vector<RHI::ShaderParameter> m_Inputs;
-
-  std::unordered_map<std::string, i32> m_UniformLocCache;
-
+  std::unordered_map<std::string_view, i32> m_UniformLocCache;
   u32 m_NextTextureSlot{};
 
   void Compile(RHI::ShaderType type, std::string_view source);
   void Reflect();
 
-  [[nodiscard]]
-  i32 GetUniformLoc(std::string_view name);
-
-  [[nodiscard]]
-  u32 AllocateTextureSlot() noexcept {
-    return m_NextTextureSlot++;
-  }
+  [[nodiscard]] i32 GetUniformLoc(std::string_view name);
+  [[nodiscard]] u32 AllocateTextureSlot() noexcept { return m_NextTextureSlot++; }
 };
 
 } // namespace Jupiter::Rendering::OpenGL

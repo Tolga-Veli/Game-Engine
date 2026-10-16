@@ -1,14 +1,13 @@
 #pragma once
 
 #include "Core/Assert.hpp"
-#include "Rendering/Backend/IBuffer.hpp"
-#include "Rendering/Backend/IShader.hpp"
+#include "Rendering/Backend/Render-Utils.hpp"
 
 #include <glad/gl.h>
 
 namespace Jupiter::Rendering::OpenGL {
-inline constexpr GLenum JupiterToOpenGLBaseType(RHI::ShaderDataType type) {
-  using enum RHI::ShaderDataType;
+inline constexpr GLenum JupiterToOpenGLShaderDataType(RHI::DataType type) {
+  using enum RHI::DataType;
   switch (type) {
   case Bool:
   case Int:
@@ -31,13 +30,16 @@ inline constexpr GLenum JupiterToOpenGLBaseType(RHI::ShaderDataType type) {
   case Mat4:
     return GL_FLOAT;
 
-  default:
-    UNREACHABLE("Undefined shader data type");
-    return 0;
+  case Texture2D:
+  case None:
+  case Count:
   }
+
+  UNREACHABLE("Undefined shader data type");
+  return 0;
 }
 
-inline constexpr u32 JupiterToOpenGLShaderStage(RHI::ShaderType type) {
+inline constexpr u32 JupiterToOpenGLShaderType(RHI::ShaderType type) {
   using enum RHI::ShaderType;
   switch (type) {
   case Vertex:
@@ -48,57 +50,44 @@ inline constexpr u32 JupiterToOpenGLShaderStage(RHI::ShaderType type) {
     return GL_GEOMETRY_SHADER;
   case Compute:
     return GL_COMPUTE_SHADER;
-  default:
-    UNREACHABLE("Undefined shader type");
-    return 0;
+
+  case None:
+  case TessEval:
+  case TessControl:
+  case Count:
   }
+
+  UNREACHABLE("Undefined shader type");
+  return 0;
 }
 
-inline GLenum
-JupiterToOpenGLInternalFormat(RHI::TextureFormat format) noexcept {
+inline GLenum JupiterToOpenGLTextureFormat(RHI::TextureFormat format) noexcept {
   using enum RHI::TextureFormat;
   switch (format) {
-  case R8:
-    return GL_R8;
-  case RGB8:
-    return GL_RGB8;
-  case RGBA8:
-    return GL_RGBA8;
-  default:
-    UNREACHABLE("Unknown texture format");
-    return 0;
-  }
-}
-
-inline GLenum JupiterToOpenGLDataFormat(RHI::TextureFormat format) noexcept {
-  using enum RHI::TextureFormat;
-  switch (format) {
+  case None:
+    return GL_NONE;
   case R8:
     return GL_RED;
+  case RG8:
+    return GL_RG;
   case RGB8:
     return GL_RGB;
   case RGBA8:
     return GL_RGBA;
-  default:
-    UNREACHABLE("Unknown texture format");
-    return 0;
   }
 }
 
-inline GLenum JupiterToOpenGLTextureFilter(RHI::FilterMode filter) noexcept {
+inline GLenum JupiterToOpenGLFilterMode(RHI::FilterMode filter) noexcept {
   using enum RHI::FilterMode;
   switch (filter) {
   case Nearest:
     return GL_NEAREST;
   case Linear:
     return GL_LINEAR;
-  default:
-    UNREACHABLE("Unknown texture filter");
-    return 0;
   }
 }
 
-inline GLenum JupiterToOpenGLTextureWrap(RHI::WrapMode wrap) noexcept {
+inline GLenum JupiterToOpenGLWrapMode(RHI::WrapMode wrap) noexcept {
   using enum RHI::WrapMode;
   switch (wrap) {
   case Repeat:
@@ -109,9 +98,6 @@ inline GLenum JupiterToOpenGLTextureWrap(RHI::WrapMode wrap) noexcept {
     return GL_CLAMP_TO_EDGE;
   case ClampToBorder:
     return GL_CLAMP_TO_BORDER;
-  default:
-    UNREACHABLE("Unknown texture format");
-    return 0;
   }
 }
 

@@ -1,34 +1,22 @@
 #pragma once
 
-#include "Utils.hpp"
+#include "Rendering/Backend/RenderThread.hpp"
 #include "Window.hpp"
 
-#include "Rendering/Backend/RenderThread.hpp"
-#include "Rendering/Backend/IGraphicsContext.hpp"
-
-#include "Assets/Traits/ShaderTraits.hpp"
-#include "Assets/Traits/TextureTraits.hpp"
-#include "Assets/Traits/FontTraits.hpp"
-#include "Assets/Traits/MaterialTraits.hpp"
-#include "Assets/Traits/MeshTraits.hpp"
-
 #include <glm/glm.hpp>
-#include <memory>
 
 namespace Jupiter {
 
-struct ApplicationOpts {
-  Core::WindowOpts window_opts{};
-};
-
 class Application {
 public:
-  explicit Application(const ApplicationOpts &opts = {});
+  explicit Application(const Core::WindowOpts &opts = {});
   virtual ~Application();
 
   Application(const Application &) = delete;
   Application &operator=(const Application &) = delete;
 
+  // Reports runtime failures to the caller after stopping the render thread
+  // and releasing its resources.
   virtual void Run() final;
   void Close() noexcept;
 
@@ -44,24 +32,19 @@ protected:
 
   virtual void OnEvent(Core::Event &);
 
-  Core::Window &GetWindow() noexcept { return *m_Window; }
-  const Core::Window &GetWindow() const noexcept { return *m_Window; }
-
-  Rendering::RHI::IGraphicsContext &GetGraphicsContext() noexcept {
-    return *m_GraphicsContext;
-  }
+  Core::Window &GetWindow() noexcept { return m_Window; }
+  const Core::Window &GetWindow() const noexcept { return m_Window; }
 
   bool IsRunning() const noexcept { return m_Running; }
 
 private:
-  Scope<Core::Window> m_Window;
-  Scope<Rendering::RHI::IGraphicsContext> m_GraphicsContext;
+  Core::Window m_Window;
   Rendering::RenderThread m_RenderThread;
+  bool m_Running{false}, m_Initialized{false};
 
-  bool m_Running{false};
+  [[nodiscard]] bool Init();
+  [[nodiscard]] bool InitRenderThread();
 
-  [[nodiscard]] bool Initialize();
-  [[nodiscard]] bool InitializeRenderThread();
   void Shutdown();
   void ProcessEvents();
 };

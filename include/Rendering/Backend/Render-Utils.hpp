@@ -43,7 +43,7 @@ inline constexpr std::string_view to_string(ShaderType type) {
     return "Unknown";
   }
 }
-enum class ShaderDataType : u32 {
+enum class DataType : u32 {
   None = 0,
 
   Bool,
@@ -71,9 +71,8 @@ enum class ShaderDataType : u32 {
   Count
 };
 
-[[nodiscard]]
-constexpr u32 ShaderDataTypeSize(ShaderDataType type) {
-  using enum ShaderDataType;
+[[nodiscard]] constexpr u32 DataTypeSize(DataType type) {
+  using enum DataType;
   switch (type) {
   case Bool:
     return sizeof(bool);
@@ -117,8 +116,8 @@ constexpr u32 ShaderDataTypeSize(ShaderDataType type) {
   return 0;
 }
 
-inline constexpr u32 ShaderDataTypeComponentCount(ShaderDataType type) {
-  using enum ShaderDataType;
+inline constexpr u32 DataTypeComponentCount(DataType type) {
+  using enum DataType;
   switch (type) {
   case Bool:
     return 1;
@@ -167,12 +166,10 @@ struct TextureBinding {
 };
 
 using ShaderParamValue =
-    std::variant<bool, i32, u32, f32, glm::vec2, glm::vec3, glm::vec4,
-                 glm::mat3, glm::mat4, TextureBinding>;
+    std::variant<bool, i32, u32, f32, glm::vec2, glm::vec3, glm::vec4, glm::mat3, glm::mat4, TextureBinding>;
 
 struct ShaderParameter {
-  std::string name;
-  ShaderDataType type;
+  std::string_view name;
+  DataType type;
 };
-
 } // namespace Jupiter::Rendering::RHI

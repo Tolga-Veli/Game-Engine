@@ -1,34 +1,37 @@
 #pragma once
 
-#include <string>
 #include <filesystem>
 #include <fstream>
 
 #include "Core/Logging.hpp"
+#include "Core/Storage.hpp"
 
 namespace Jupiter::Data {
-inline std::string ReadFile(const std::filesystem::path &path) {
+
+enum class FileError : u8 {
+  Success = 0,
+  OpenFailed,
+  SizeError,
+  LoadFailed,
+};
+
+inline FileError ReadFile(const std::filesystem::path &path, Storage &buffer) {
   LOG_INFO("Reading file: {}", std::filesystem::absolute(path).string());
   std::ifstream in(path, std::ios::in | std::ios::binary | std::ios::ate);
 
-  if (!in) {
-    LOG_ERROR("Couldn't open file: {}", path.string());
-    return "";
-  }
+  if (!in)
+    return FileError::OpenFailed;
 
   auto size = in.tellg();
   if (size <= 0)
-    return "";
+    return FileError::SizeError;
 
-  std::string result;
-  result.resize(size);
-
+  buffer = Storage(size);
   in.seekg(0, std::ios::beg);
-  if (!in.read(result.data(), size)) {
-    LOG_ERROR("Couldn't load file: {}", path.string());
-    return "";
-  }
 
-  return result;
+  if (!in.read(buffer.as<char>(), size))
+    return FileError::LoadFailed;
+
+  return FileError::Success;
 }
 } // namespace Jupiter::Data

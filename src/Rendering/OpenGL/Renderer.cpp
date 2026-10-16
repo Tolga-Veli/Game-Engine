@@ -28,10 +28,10 @@ void Renderer::Submit(const RHI::RenderCommand &cmd) {
   auto &glMesh = static_cast<OpenGL::Mesh &>(cmd.mesh->GetImpl());
   auto &vao = glMesh.GetVertexArray();
 
-  if (!cmd.vertexData.empty())
-    glMesh.SetVertexData(cmd.vertexData);
+  if (!cmd.vertices.empty())
+    glMesh.SetVertexData(StorageView{const_cast<Storage &>(cmd.vertices)});
   if (!cmd.instanceData.empty())
-    glMesh.SetInstanceData(cmd.instanceData);
+    glMesh.SetInstanceData(StorageView{const_cast<Storage &>(cmd.instanceData)});
 
   if (cmd.alphaBlend) {
     glEnable(GL_BLEND);
@@ -62,11 +62,9 @@ void Renderer::Submit(const RHI::RenderCommand &cmd) {
   vao.Bind();
 
   if (vao.GetIndexCount() > 0) {
-    const u32 indexCount =
-        cmd.elementCount ? cmd.elementCount : vao.GetIndexCount();
+    const u32 indexCount = cmd.elementCount ? cmd.elementCount : vao.GetIndexCount();
     if (cmd.instanceCount > 1)
-      glDrawElementsInstanced(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT,
-                              nullptr, cmd.instanceCount);
+      glDrawElementsInstanced(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, nullptr, cmd.instanceCount);
     else
       glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, nullptr);
 

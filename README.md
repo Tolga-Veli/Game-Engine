@@ -50,3 +50,15 @@ To build only the engine library, configure with
 For an automated launch/render/shutdown check, run
 `JupiterExample --smoke-test`. The example exits cleanly after rendering 120
 frames.
+
+## Regression tests
+
+The headless render failure tests use fake window and graphics backends with the
+real application, render thread, and queue. They cover failure propagation,
+blocked submissions, cleanup ordering, and restart without needing a display.
+
+```sh
+cmake -S . -B build -DJUPITER_BUILD_TESTS=ON
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+```

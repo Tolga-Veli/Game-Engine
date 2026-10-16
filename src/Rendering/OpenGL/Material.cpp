@@ -9,20 +9,14 @@
 
 namespace Jupiter::Rendering::OpenGL {
 
-void Material::SetProperty(std::string_view name,
-                           const RHI::ShaderParamValue &val) {
-  m_Properties.insert_or_assign(std::string(name), val);
-}
+void Material::SetProperty(std::string_view name, const RHI::ShaderParamValue &val) { m_Properties[name] = val; }
 
-void Material::RemoveProperty(std::string_view name) {
-  m_Properties.erase(std::string(name));
-}
+void Material::RemoveProperty(std::string_view name) { m_Properties.erase(name); }
 
 void Material::ClearProperties() { m_Properties.clear(); }
 
 void Material::Bind() {
-  auto shader =
-      Assets::AssetManager::Resolve<Rendering::Shader>(m_ShaderHandle);
+  auto shader = Assets::AssetManager::Resolve<Rendering::Shader>(m_ShaderHandle);
   CORE_ASSERT(shader, "Material: failed to resolve shader");
 
   auto &impl = static_cast<OpenGL::Shader &>(shader->GetImpl());

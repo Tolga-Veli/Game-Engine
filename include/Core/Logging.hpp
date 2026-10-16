@@ -38,8 +38,7 @@ namespace detail {
 // emitting these entirely (e.g. redirecting to a file).
 //
 // Note: these are terminal codes, not usable directly.
-[[nodiscard]] constexpr std::string_view
-to_ansi_color(LogLevel level) noexcept {
+[[nodiscard]] constexpr std::string_view to_ansi_color(LogLevel level) noexcept {
   using enum LogLevel;
   switch (level) {
   case Trace:
@@ -74,8 +73,7 @@ public:
   void SetColorEnabled(bool enabled) noexcept { m_colorEnabled = enabled; }
 
   template <typename... Args>
-  void Log(LogLevel level, std::source_location loc,
-           std::format_string<Args...> fmt, Args &&...args) {
+  void Log(LogLevel level, std::source_location loc, std::format_string<Args...> fmt, Args &&...args) {
     if (level < m_minLevel)
       return;
 
@@ -85,13 +83,10 @@ public:
     FILE *stream = (level >= LogLevel::Warn) ? stderr : stdout;
 
     if (m_colorEnabled) {
-      std::fprintf(stream, "%s[%s]%s %s (%s:%d)\n", to_ansi_color(level).data(),
-                   to_string(level).data(), k_ColorReset.data(),
-                   message.c_str(), loc.file_name(),
-                   static_cast<int>(loc.line()));
+      std::fprintf(stream, "%s[%s]%s %s (%s:%d)\n", to_ansi_color(level).data(), to_string(level).data(),
+                   k_ColorReset.data(), message.c_str(), loc.file_name(), static_cast<int>(loc.line()));
     } else {
-      std::fprintf(stream, "[%s] %s (%s:%d)\n", to_string(level).data(),
-                   message.c_str(), loc.file_name(),
+      std::fprintf(stream, "[%s] %s (%s:%d)\n", to_string(level).data(), message.c_str(), loc.file_name(),
                    static_cast<int>(loc.line()));
     }
     std::fflush(stream);
@@ -111,9 +106,8 @@ private:
 // std::source_location::current() is captured at the macro call site, so
 // every log line points at the code that actually logged it, not at some
 // wrapper function three layers down.
-#define LOG(level, ...)                                                        \
-  ::Jupiter::Core::detail::Logger::Instance().Log(                             \
-      level, std::source_location::current(), __VA_ARGS__)
+#define LOG(level, ...)                                                                                                \
+  ::Jupiter::Core::detail::Logger::Instance().Log(level, std::source_location::current(), __VA_ARGS__)
 
 #define LOG_TRACE(...) LOG(::Jupiter::Core::LogLevel::Trace, __VA_ARGS__)
 #define LOG_DEBUG(...) LOG(::Jupiter::Core::LogLevel::Debug, __VA_ARGS__)

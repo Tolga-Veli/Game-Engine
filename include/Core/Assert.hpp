@@ -20,18 +20,14 @@ namespace Jupiter::Core::detail {
 // This is a hard-failure path, and if a future caller wants to
 // turn it into a throw instead of abort() (e.g. for a fuzzing harness), that
 // shouldn't require touching the macros.
-[[noreturn]] inline void AssertFail(std::string_view expr, std::string_view msg,
-                                    std::source_location loc) {
-  Logger::Instance().Log(LogLevel::Fatal, loc, "Assertion failed: ({}) {}",
-                         expr, msg);
+[[noreturn]] inline void AssertFail(std::string_view expr, std::string_view msg, std::source_location loc) {
+  Logger::Instance().Log(LogLevel::Fatal, loc, "Assertion failed: ({}) {}", expr, msg);
   CORE_DEBUG_BREAK();
   std::abort();
 }
 
-[[noreturn]] inline void UnreachableFail(std::string_view msg,
-                                         std::source_location loc) {
-  Logger::Instance().Log(LogLevel::Fatal, loc, "Unreachable code reached: {}",
-                         msg);
+[[noreturn]] inline void UnreachableFail(std::string_view msg, std::source_location loc) {
+  Logger::Instance().Log(LogLevel::Fatal, loc, "Unreachable code reached: {}", msg);
   CORE_DEBUG_BREAK();
   std::abort();
 }
@@ -42,12 +38,11 @@ namespace Jupiter::Core::detail {
 // be violated without immediately corrupting program state. If you're ever
 // tempted to disable this in release "for performance", that's a sign the
 // check belongs in CORE_ASSERT instead, not that VERIFY should be weaker.
-#define CORE_VERIFY(cond, msg)                                                 \
-  do {                                                                         \
-    if (!(cond)) {                                                             \
-      ::Jupiter::Core::detail::AssertFail(#cond, msg,                          \
-                                          std::source_location::current());    \
-    }                                                                          \
+#define CORE_VERIFY(cond, msg)                                                                                         \
+  do {                                                                                                                 \
+    if (!(cond)) {                                                                                                     \
+      ::Jupiter::Core::detail::AssertFail(#cond, msg, std::source_location::current());                                \
+    }                                                                                                                  \
   } while (false)
 
 // Compiled out entirely in release - the condition itself is never
@@ -65,8 +60,7 @@ namespace Jupiter::Core::detail {
 #define CORE_ENABLE_ASSERTS 0
 #endif
 
-#define UNREACHABLE(msg)                                                       \
-  do {                                                                         \
-    ::Jupiter::Core::detail::UnreachableFail(msg,                              \
-                                             std::source_location::current()); \
+#define UNREACHABLE(msg)                                                                                               \
+  do {                                                                                                                 \
+    ::Jupiter::Core::detail::UnreachableFail(msg, std::source_location::current());                                    \
   } while (false)

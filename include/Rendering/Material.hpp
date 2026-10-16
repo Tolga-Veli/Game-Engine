@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Rendering/Backend/IMaterial.hpp"
-#include "Rendering/Backend/ShaderTypes.hpp"
+#include "Rendering/Backend/Render-Utils.hpp"
 
 #include <unordered_map>
 
@@ -29,84 +29,63 @@ public:
       m_Impl->SetShader(m_ShaderHandle);
   }
 
-  [[nodiscard]]
-  Assets::AssetHandle<Shader> GetShader() const noexcept {
-    return m_ShaderHandle;
-  }
+  [[nodiscard]] Assets::AssetHandle<Shader> GetShader() const noexcept { return m_ShaderHandle; }
 
-  [[nodiscard]]
-  bool HasShader() const noexcept {
-    return m_ShaderHandle.IsValid();
-  }
+  [[nodiscard]] bool HasShader() const noexcept { return m_ShaderHandle.IsValid(); }
 
   // --------------------
   // Properties
   // --------------------
-  template <class T> void Set(std::string_view name, T &&val) {
+  template <class T> void Set(const std::string &name, T &&val) {
     SetParameter(name, RHI::ShaderParamValue(std::forward<T>(val)));
   }
 
-  void SetParameter(std::string_view name, const RHI::ShaderParamValue &val) {
-    auto [it, _] = m_Properties.insert_or_assign(std::string(name), val);
+  void SetParameter(const std::string &name, const RHI::ShaderParamValue &val) {
+    auto [it, _] = m_Properties.insert_or_assign(name, val);
 
     if (m_Impl)
       m_Impl->SetProperty(name, it->second);
   }
 
-  void Remove(std::string_view name) {
-    const auto it = m_Properties.find(std::string(name));
+  void Remove(const std::string &name) {
+    const auto it = m_Properties.find(name);
     if (it == m_Properties.end())
       return;
 
     m_Properties.erase(it);
-
     if (m_Impl)
       m_Impl->RemoveProperty(name);
   }
 
   void Clear() {
     m_Properties.clear();
-
     if (m_Impl)
       m_Impl->ClearProperties();
   }
 
-  [[nodiscard]]
-  bool Has(std::string_view name) const {
-    return m_Properties.contains(std::string(name));
-  }
+  [[nodiscard]] bool Has(const std::string &name) const { return m_Properties.contains(name); }
 
-  [[nodiscard]]
-  const RHI::ShaderParamValue *Find(std::string_view name) const {
-    const auto it = m_Properties.find(std::string(name));
-
+  [[nodiscard]] const RHI::ShaderParamValue *Find(const std::string &name) const {
+    const auto it = m_Properties.find(name);
     if (it == m_Properties.end())
       return nullptr;
 
     return &it->second;
   }
 
-  template <typename T>
-  [[nodiscard]]
-  const T *Get(std::string_view name) const {
+  template <typename T> [[nodiscard]] const T *Get(const std::string &name) const {
     const auto *value = Find(name);
-
     if (!value)
       return nullptr;
 
     return std::get_if<T>(value);
   }
 
-  [[nodiscard]]
-  const std::unordered_map<std::string, RHI::ShaderParamValue> &
-  GetProperties() const noexcept {
+  [[nodiscard]] const std::unordered_map<std::string, RHI::ShaderParamValue> &GetProperties() const noexcept {
     return m_Properties;
   }
 
-  [[nodiscard]]
-  bool IsValid() const noexcept {
-    return m_Impl != nullptr;
-  }
+  [[nodiscard]] bool IsValid() const noexcept { return m_Impl != nullptr; }
 
 private:
   Assets::AssetHandle<Shader> m_ShaderHandle;

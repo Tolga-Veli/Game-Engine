@@ -7,7 +7,7 @@
 namespace Jupiter::Rendering::OpenGL {
 class Texture2D final : public RHI::ITexture {
 public:
-  explicit Texture2D(const RHI::TextureCreateSpec &info) noexcept;
+  explicit Texture2D(const RHI::TextureData &info) noexcept;
   ~Texture2D() noexcept override;
 
   Texture2D(const Texture2D &) = delete;
@@ -22,7 +22,7 @@ public:
   void Bind(u32 slot = 0) const noexcept;
 
 private:
-  void Upload(const void *pixels, u32 width, u32 height, u32 channels);
+  void Upload(StorageView pixels, u32 width, u32 height, u32 channels);
 
   u32 m_RendererID{}, m_Width{}, m_Height{};
 };

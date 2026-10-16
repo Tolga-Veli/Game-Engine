@@ -27,8 +27,7 @@ using i64 = std::int64_t;
 using f32 = float;
 using f64 = double;
 
-template <typename T>
-constexpr size_t EnumToSize(T value)
+template <typename T> constexpr size_t EnumToSize(T value)
   requires(std::is_enum_v<T>)
 {
   return static_cast<u32>(value);
@@ -72,12 +71,8 @@ inline constexpr glm::vec4 LightGray = {0.75f, 0.75f, 0.75f, 1.0f};
 } // namespace RGBA
 
 // convert the traditional [0,255] colours to [0,1]
-constexpr glm::vec3 to_RGB(u8 r, u8 g, u8 b) {
-  return {r / 255.0f, g / 255.0f, b / 255.0f};
-}
+constexpr glm::vec3 to_RGB(u8 r, u8 g, u8 b) { return {r / 255.0f, g / 255.0f, b / 255.0f}; }
 
-constexpr glm::vec4 to_RGBA(u8 r, u8 g, u8 b, u8 a = 255) {
-  return {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f};
-}
+constexpr glm::vec4 to_RGBA(u8 r, u8 g, u8 b, u8 a = 255) { return {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f}; }
 } // namespace Core::Colors
 } // namespace Jupiter

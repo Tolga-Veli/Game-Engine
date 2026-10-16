@@ -1,20 +1,28 @@
 #pragma once
 
 #include "Core/Utils.hpp"
+#include "Core/Storage.hpp"
+
 #include <glm/glm.hpp>
-#include <span>
 
 namespace Jupiter::Rendering::RHI {
+
+struct FontOptions {
+  float size = 16.0f;
+};
+
+struct FontData {
+  Storage data;
+  FontOptions opts;
+};
+
 class IFont {
 public:
   struct Glyph {};
 
   virtual ~IFont() = default;
 
-  static Scope<IFont> Create(const void *data, std::size_t fontSize,
-                             float pixelHeight);
-
-  virtual const Glyph &GetGlyph(unsigned char c) const = 0;
+  virtual const Glyph &GetGlyph(char c) const = 0;
 
   virtual std::span<const std::byte> GetAtlasPixels() const = 0;
 

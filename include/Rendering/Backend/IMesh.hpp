@@ -4,44 +4,34 @@
 #include "Rendering/Backend/BufferLayout.hpp"
 #include "Rendering/Backend/IBuffer.hpp"
 
-#include <span>
-
 namespace Jupiter::Rendering::RHI {
-struct MeshCreateInfo {
-  std::span<const std::byte> vertexData;
-  std::span<const u32> indices;
+
+struct MeshDesc {
   BufferLayout layout;
-  BufferUsage usage{BufferUsage::Static};
-  std::size_t vertexCapacity{};
+  RHI::BufferDesc vertices, indices;
+  u32 vertexCap{}, indexCap{};
 };
 
 class IMesh {
 public:
   virtual ~IMesh() = default;
 
-  static Scope<IMesh> Create(std::span<const std::byte> vertexData,
-                             std::span<const u32> indices,
-                             const BufferLayout &layout);
+  IMesh(const IMesh &) = delete;
+  IMesh &operator=(const IMesh &) = delete;
+  IMesh(IMesh &&) = delete;
+  IMesh &operator=(IMesh &&) = delete;
 
-  static Scope<IMesh> CreateDynamic(std::size_t vertexCapacity,
-                                    std::span<const u32> indices,
-                                    const BufferLayout &layout);
+  virtual bool SetGeometry(const BufferDesc &desc, const BufferData &indices) = 0;
+  virtual bool UpdateVertices(const BufferData &data) = 0;
+  virtual bool UpdateIndices(const BufferData &data) = 0;
 
-  template <typename T>
-  static Scope<IMesh> Create(std::span<const T> vertices,
-                             std::span<const u32> indices,
-                             const BufferLayout &layout) {
+  virtual const BufferLayout &GetLayout() const noexcept = 0;
 
-    return Create(std::as_bytes(vertices), indices, layout);
-  }
-
-  [[nodiscard]]
   virtual u32 GetVertexCount() const noexcept = 0;
+  virtual u32 GetVertexCapacity() const noexcept = 0;
 
-  [[nodiscard]]
   virtual u32 GetIndexCount() const noexcept = 0;
-
-  virtual void SetVertexData(std::span<const std::byte> data) = 0;
+  virtual u32 GetIndexCapacity() const noexcept = 0;
 
 protected:
   IMesh() = default;

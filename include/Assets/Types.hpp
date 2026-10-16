@@ -11,8 +11,7 @@ constexpr u64 HashAssetName(std::string_view name) {
   // FNV-1a 64-bit offset basis and prime
   // https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
   // (Collisions should be basically impossible)
-  constexpr u64 offset_basis = 14695981039346656037ull,
-                prime = 1099511628211ull;
+  constexpr u64 offset_basis = 14695981039346656037ull, prime = 1099511628211ull;
 
   u64 hash = offset_basis;
   for (unsigned char c : name) {
@@ -24,8 +23,7 @@ constexpr u64 HashAssetName(std::string_view name) {
 }
 
 template <class T>
-concept ToStringCompatible =
-    requires(T &&value) { std::to_string(std::forward<T>(value)); };
+concept ToStringCompatible = requires(T &&value) { std::to_string(std::forward<T>(value)); };
 
 } // namespace detail
 
@@ -51,8 +49,7 @@ inline constexpr std::string_view to_string(AssetType type) {
 }
 
 template <detail::ToStringCompatible... Args>
-inline constexpr u64 HashAssetKey(std::string_view path, AssetType type,
-                                  Args &&...args) {
+inline constexpr u64 HashAssetKey(std::string_view path, AssetType type, Args &&...args) {
   std::string key = "file:";
   key += path;
   key += ':';

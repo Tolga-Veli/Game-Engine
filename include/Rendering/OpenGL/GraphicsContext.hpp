@@ -1,49 +1,44 @@
 #pragma once
 
-#include "Core/Assert.hpp"
 #include "Rendering/Backend/IGraphicsContext.hpp"
-#include "glm/gtc/type_ptr.hpp"
+#include "Core/Logging.hpp"
 
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
 namespace Jupiter::Rendering::OpenGL {
 
+// TODO: change graphics context to accept arbitrary window not just GLFW
 class GraphicsContext final : public RHI::IGraphicsContext {
 public:
   // Does not touch GL/GLFW state yet - just stores the window. Call Init()
   // once the window exists and you're ready to make its context current.
-
-  explicit GraphicsContext(GLFWwindow *window) noexcept : m_Window(window) {
-    CORE_ASSERT(window, "GraphicsContext: window handle is null");
+  explicit GraphicsContext(GLFWwindow *window) : m_Window(window) {
+    if (!m_Window)
+      throw std::runtime_error("GraphicsContext: GLFW window is nullptr");
   }
 
   bool Init() override {
-    CORE_ASSERT(m_Window != nullptr, "GLFW window was nullptr");
+    if (!m_Window)
+      throw std::runtime_error("GraphicsContext: GLFW window is nullptr");
+
     glfwMakeContextCurrent(m_Window);
 
-    i32 status = gladLoadGL(glfwGetProcAddress);
-    if (status == 0) {
-      LOG_ERROR("GraphicsContext: gladLoadGL failed");
-      return false;
-    }
+    if (!gladLoadGL(glfwGetProcAddress))
+      throw std::runtime_error("GraphicsContext: gladLoadGL failed");
 
     i32 width, height;
     glfwGetFramebufferSize(m_Window, &width, &height);
     glViewport(0, 0, width, height);
 
     LOG_INFO("OpenGL Context:");
-    LOG_INFO("  Vendor:   {}",
-             reinterpret_cast<const char *>(glGetString(GL_VENDOR)));
-    LOG_INFO("  Renderer: {}",
-             reinterpret_cast<const char *>(glGetString(GL_RENDERER)));
-    LOG_INFO("  Version:  {}",
-             reinterpret_cast<const char *>(glGetString(GL_VERSION)));
+    LOG_INFO("  Vendor:   {}", reinterpret_cast<const char *>(glGetString(GL_VENDOR)));
+    LOG_INFO("  Renderer: {}", reinterpret_cast<const char *>(glGetString(GL_RENDERER)));
+    LOG_INFO("  Version:  {}", reinterpret_cast<const char *>(glGetString(GL_VERSION)));
 
 #ifdef J_DEBUG
     SetupDebugOutput();
 #endif
-
     return true;
   }
 
@@ -52,22 +47,11 @@ public:
       glfwMakeContextCurrent(nullptr);
   }
 
-  void SetVSync(RHI::VSyncMode mode) override {
-    CORE_VERIFY(mode != RHI::VSyncMode::Adaptive,
-                "Adaptive VSync is not implemented yet");
-
-    glfwSwapInterval(mode == RHI::VSyncMode::On ? 1 : 0);
-    m_VSyncMode = mode;
-  }
-
-  RHI::VSyncMode GetVSync() const noexcept override { return m_VSyncMode; }
-
   void OnFrame() override { glfwSwapBuffers(m_Window); }
 
 #ifdef J_DEBUG
-  static void GLAPIENTRY OnGLDebugMessage(GLenum, GLenum type, GLuint,
-                                          GLenum severity, GLsizei,
-                                          const GLchar *message, const void *) {
+  static void GLAPIENTRY OnGLDebugMessage(GLenum, GLenum type, GLuint, GLenum severity, GLsizei, const GLchar *message,
+                                          const void *) {
     if (severity == GL_DEBUG_SEVERITY_NOTIFICATION)
       return;
     if (severity == GL_DEBUG_SEVERITY_HIGH || type == GL_DEBUG_TYPE_ERROR)
@@ -80,13 +64,11 @@ public:
     glEnable(GL_DEBUG_OUTPUT);
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallback(OnGLDebugMessage, nullptr);
-    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr,
-                          GL_TRUE);
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
   }
 #endif
 
 private:
-  GLFWwindow *m_Window;
-  RHI::VSyncMode m_VSyncMode = RHI::VSyncMode::Off;
+  GLFWwindow *m_Window{};
 };
 } // namespace Jupiter::Rendering::OpenGL

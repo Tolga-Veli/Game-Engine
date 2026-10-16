@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Core/Assert.hpp"
 #include "Rendering/Backend/IBuffer.hpp"
 
 #include <glad/gl.h>
@@ -19,9 +18,6 @@ inline GLenum JupiterToOpenGLBufferType(RHI::BufferType type) {
     return GL_UNIFORM_BUFFER;
   case Storage:
     return GL_SHADER_STORAGE_BUFFER;
-  default:
-    UNREACHABLE("Uknown RHI::BufferType");
-    return GL_ARRAY_BUFFER;
   }
 }
 
@@ -30,70 +26,48 @@ inline GLbitfield JupiterToOpenGLBufferUsage(RHI::BufferUsage usage) noexcept {
 
   switch (usage) {
   case Static:
-    // Immutable after creation
     return GL_NONE;
   case Dynamic:
     // Allows glNamedBufferSubData();
     return GL_DYNAMIC_STORAGE_BIT;
   case Stream:
     return GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
-  default:
-    UNREACHABLE("Unknown RHI::BufferUsage");
-    return GL_NONE;
   }
 }
 
 class Buffer final : public RHI::IBuffer {
 public:
-  explicit Buffer(const RHI::BufferDesc &desc) noexcept;
+  explicit Buffer(const RHI::BufferDesc &desc, const RHI::BufferData &data) noexcept;
   ~Buffer() noexcept override;
 
   Buffer(const Buffer &) = delete;
   Buffer &operator=(const Buffer &) = delete;
+
   Buffer(Buffer &&other) noexcept;
   Buffer &operator=(Buffer &&other) noexcept;
 
-  [[nodiscard]]
-  RHI::BufferType GetType() const noexcept {
-    return m_Desc.type;
-  }
-
-  [[nodiscard]]
-  RHI::BufferUsage GetUsage() const noexcept {
-    return m_Desc.usage;
-  }
-
-  [[nodiscard]] u32 GetSize() const noexcept { return m_Desc.size; }
-
-  [[nodiscard]]
-  u32 GetRendererID() const noexcept {
-    return m_RendererID;
-  }
-
-  [[nodiscard]]
-  bool IsMapped() const noexcept {
-    return m_MappedData != nullptr;
-  }
-
-  [[nodiscard]]
-  void *GetMappedData() noexcept {
-    return m_MappedData;
-  }
-
-  [[nodiscard]]
-  const void *GetMappedData() const noexcept {
-    return m_MappedData;
-  }
-
+  void Reserve(std::size_t size) noexcept;
+  void SetData(const RHI::BufferData &data, std::size_t offset = 0) noexcept override;
   void Bind() const noexcept;
-  void Unbind() const noexcept;
-  void SetData(const void *data, u32 size, u32 offset = 0) noexcept override;
+
+  [[nodiscard]] RHI::BufferType GetType() const noexcept { return m_Type; }
+  [[nodiscard]] RHI::BufferUsage GetUsage() const noexcept { return m_Usage; }
+  [[nodiscard]] RHI::DataType GetDataType() const noexcept { return m_DataType; }
+  [[nodiscard]] std::size_t GetSize() const noexcept { return m_Size; }
+  [[nodiscard]] u32 GetRendererID() const noexcept { return m_RendererID; }
 
 private:
   u32 m_RendererID{};
-  RHI::BufferDesc m_Desc;
-  void *m_MappedData{};
+  RHI::BufferType m_Type{};
+  RHI::BufferUsage m_Usage{};
+  RHI::DataType m_DataType{RHI::DataType::None};
+
+  std::size_t m_Size{};
+  std::byte *m_MappedData{};
+
+  void Allocate(std::size_t size, const void *initialData) noexcept;
 
   void Destroy() noexcept;
+  void Unmap() noexcept;
 };
 } // namespace Jupiter::Rendering::OpenGL

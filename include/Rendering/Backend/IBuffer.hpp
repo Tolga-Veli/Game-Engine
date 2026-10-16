@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Utils.hpp"
+#include "Render-Utils.hpp"
 
 namespace Jupiter::Rendering::RHI {
 enum class BufferType {
@@ -24,9 +24,11 @@ enum class BufferUsage {
 struct BufferDesc {
   BufferType type;
   BufferUsage usage;
-  std::size_t size;
-  const void *initData = nullptr;
+  DataType dtype;
+  std::size_t bytes;
 };
+
+using BufferData = std::span<const std::byte>;
 
 class IBuffer {
 public:
@@ -37,7 +39,7 @@ public:
   IBuffer(IBuffer &&) = delete;
   IBuffer &operator=(IBuffer &&) = delete;
 
-  virtual void SetData(const void *data, u32 size, u32 offset = 0) noexcept = 0;
+  virtual void SetData(const BufferData &buffer, std::size_t offset = 0) noexcept = 0;
 
 protected:
   IBuffer() = default;

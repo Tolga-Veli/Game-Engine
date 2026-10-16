@@ -10,97 +10,38 @@
 namespace Jupiter::Rendering::OpenGL {
 class Mesh final : public RHI::IMesh {
 public:
-  explicit Mesh(const RHI::MeshCreateInfo &info)
-      : m_VertexArray(),
-        m_VertexBuffer(RHI::BufferDesc{
-            .type = RHI::BufferType::Vertex,
-            .usage = info.usage,
-            .size = info.vertexCapacity ? info.vertexCapacity
-                                        : info.vertexData.size_bytes(),
-            .initData = info.vertexData.data()}),
-        m_IndexBuffer(RHI::BufferDesc{.type = RHI::BufferType::Index,
-                                      .usage = RHI::BufferUsage::Static,
-                                      .size = info.indices.size_bytes(),
-                                      .initData = info.indices.data()}),
-        m_Layout(info.layout),
-        m_VertexCount(info.vertexData.size_bytes() / info.layout.GetStride()),
-        m_IndexCount(info.indices.size()) {
-
-    CORE_ASSERT(!info.vertexData.empty() || info.vertexCapacity > 0,
-                "Mesh vertex data cannot be empty");
-    CORE_ASSERT(!info.indices.empty(), "Mesh index cannot be empty");
-    CORE_ASSERT(info.layout.GetStride() > 0,
-                "Mesh vertex layout stride cannot be zero");
-    CORE_ASSERT(info.vertexData.empty() ||
-                    info.vertexData.size_bytes() % info.layout.GetStride() == 0,
-                "Mesh vertex data size is not a multiple of vertex stride");
-
-    m_VertexArray.AddVertexBuffer(m_VertexBuffer, m_Layout);
-    m_VertexArray.SetIndexBuffer(m_IndexBuffer);
-  }
-
-  void SetVertexData(std::span<const std::byte> data) override {
-    CORE_ASSERT(data.size_bytes() <= m_VertexBuffer.GetSize(),
-                "Dynamic mesh capacity exceeded");
-
-    m_VertexBuffer.SetData(data.data(), data.size_bytes());
-    m_VertexCount = data.size_bytes() / m_Layout.GetStride();
-  }
-
-  void SetInstanceData(std::span<const std::byte> data) {
-    const RHI::BufferLayout layout{
-        {RHI::ShaderDataType::Float2, "position", 1},
-        {RHI::ShaderDataType::Float2, "velocity", 2},
-        {RHI::ShaderDataType::Float, "radius", 3}};
-
-    if (!m_InstanceBuffer) {
-      m_InstanceBuffer = std::make_unique<Buffer>(
-          RHI::BufferDesc{.type = RHI::BufferType::Vertex,
-                          .usage = RHI::BufferUsage::Dynamic,
-                          .size = data.size_bytes()});
-      m_VertexArray.AddVertexBuffer(*m_InstanceBuffer, layout, 1);
-    } else if (data.size_bytes() > m_InstanceBuffer->GetSize()) {
-      const std::size_t newCapacity =
-          std::max(data.size_bytes(),
-                   std::size_t{m_InstanceBuffer->GetSize()} * 2);
-      auto largerBuffer = std::make_unique<Buffer>(
-          RHI::BufferDesc{.type = RHI::BufferType::Vertex,
-                          .usage = RHI::BufferUsage::Dynamic,
-                          .size = newCapacity});
-      m_VertexArray.ReplaceVertexBuffer(1, *largerBuffer, layout);
-      m_InstanceBuffer = std::move(largerBuffer);
-    }
-
-    m_InstanceBuffer->SetData(data.data(), data.size_bytes());
-  }
-
+  explicit Mesh(const RHI::MeshDesc &desc);
   ~Mesh() noexcept override = default;
 
   Mesh(const Mesh &) = delete;
   Mesh &operator=(const Mesh &) = delete;
-  Mesh(Mesh &&) noexcept = default;
-  Mesh &operator=(Mesh &&) noexcept = default;
+  Mesh(Mesh &&) = delete;
+  Mesh &operator=(Mesh &&) = delete;
 
-  [[nodiscard]]
-  virtual u32 GetVertexCount() const noexcept override {
-    return m_VertexCount;
-  }
+  bool SetGeometry(const RHI::BufferDesc &desc, const RHI::BufferData &indices) override;
+  bool UpdateVertices(const RHI::BufferData &vertices) override;
+  bool UpdateIndices(const RHI::BufferData &indices) override;
 
-  [[nodiscard]]
-  virtual u32 GetIndexCount() const noexcept override {
-    return m_IndexCount;
-  }
+  [[nodiscard]] const RHI::BufferLayout &GetLayout() const noexcept override { return m_Layout; }
 
-  [[nodiscard]]
-  const VertexArray &GetVertexArray() const noexcept {
-    return m_VertexArray;
-  }
+  [[nodiscard]] u32 GetVertexCount() const noexcept override { return m_VertexCount; }
+  [[nodiscard]] u32 GetVertexCapacity() const noexcept override { return m_VertexCapacity; }
+  [[nodiscard]] u32 GetIndexCount() const noexcept override { return m_IndexCount; }
+  [[nodiscard]] u32 GetIndexCapacity() const noexcept override { return m_IndexCapacity; }
+  [[nodiscard]] const VertexArray &GetVertexArray() const noexcept { return m_VertexArray; }
 
 private:
+  RHI::BufferLayout m_Layout;
   VertexArray m_VertexArray;
   Buffer m_VertexBuffer, m_IndexBuffer;
-  std::unique_ptr<Buffer> m_InstanceBuffer;
-  RHI::BufferLayout m_Layout;
-  u32 m_VertexCount{}, m_IndexCount{};
+  u32 m_VertexCount{}, m_VertexCapacity{}, m_IndexCount{}, m_IndexCapacity{};
+
+  static u32 GrowCapacity(u32 curr, u32 required) noexcept;
+
+  [[nodiscard]] bool IsValidVertexData(const RHI::BufferData &data) const noexcept;
+  [[nodiscard]] bool IsValidIndexData(const RHI::BufferData &data) const noexcept;
+
+  void EnsureVertexCapacity(u32 sz);
+  void EnsureIndexCapacity(u32 sz);
 };
 } // namespace Jupiter::Rendering::OpenGL

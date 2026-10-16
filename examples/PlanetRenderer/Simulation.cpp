@@ -5,8 +5,7 @@
 void PlanetSimulation::Init() {
   static std::mt19937 rng{std::random_device{}()};
 
-  std::uniform_real_distribution<float> xDist(0.0f, m_Width),
-      yDist(0.0f, m_Height), massDist(k_MinMass, k_MaxMass),
+  std::uniform_real_distribution<float> xDist(0.0f, m_Width), yDist(0.0f, m_Height), massDist(k_MinMass, k_MaxMass),
       radiusDist(k_MinRadius, k_MaxRadius);
 
   for (std::size_t i = 0; i < m_Planets.size(); ++i) {
@@ -28,8 +27,7 @@ void PlanetSimulation::Init() {
 void PlanetSimulation::SpawnPlanet() {
   static std::mt19937 rng{std::random_device{}()};
 
-  std::uniform_real_distribution<float> xDist(0.0f, m_Width),
-      yDist(0.0f, m_Height);
+  std::uniform_real_distribution<float> xDist(0.0f, m_Width), yDist(0.0f, m_Height);
 
   SpawnPlanet({xDist(rng), yDist(rng)});
 }
@@ -37,14 +35,11 @@ void PlanetSimulation::SpawnPlanet() {
 void PlanetSimulation::SpawnPlanet(glm::vec2 position) {
   static std::mt19937 rng{std::random_device{}()};
 
-  std::uniform_real_distribution<float> massDist(k_MinMass, k_MaxMass),
-      radiusDist(k_MinRadius, k_MaxRadius);
+  std::uniform_real_distribution<float> massDist(k_MinMass, k_MaxMass), radiusDist(k_MinRadius, k_MaxRadius);
 
   const float radius = radiusDist(rng);
-  position.x = glm::clamp(position.x, radius,
-                          std::max(radius, m_Width - radius));
-  position.y = glm::clamp(position.y, radius,
-                          std::max(radius, m_Height - radius));
+  position.x = glm::clamp(position.x, radius, std::max(radius, m_Width - radius));
+  position.y = glm::clamp(position.y, radius, std::max(radius, m_Height - radius));
 
   m_Planets.push_back(position, glm::vec2{0.0f}, massDist(rng), radius);
   m_Accelerations.emplace_back(0.0f);
@@ -117,8 +112,7 @@ void PlanetSimulation::CalculateAccelerations() {
       const glm::vec2 delta = positions[j] - pos_i;
       const float distSq = glm::dot(delta, delta) + softeningSq;
 
-      const float invDist = 1.0f / std::sqrt(distSq),
-                  invDist3 = invDist * invDist * invDist;
+      const float invDist = 1.0f / std::sqrt(distSq), invDist3 = invDist * invDist * invDist;
 
       const glm::vec2 dir = delta * invDist3;
 
@@ -249,8 +243,7 @@ void PlanetSimulation::ResolveCollisions() {
     while (j < m_Planets.size()) {
       const glm::vec2 delta = m_Planets.positions[j] - m_Planets.positions[i];
 
-      const float distSq = glm::dot(delta, delta),
-                  radiusSum = m_Planets.radii[i] + m_Planets.radii[j];
+      const float distSq = glm::dot(delta, delta), radiusSum = m_Planets.radii[i] + m_Planets.radii[j];
 
       if (distSq < radiusSum * radiusSum) {
         MergeBodies(i, j);
@@ -266,23 +259,17 @@ void PlanetSimulation::ResolveCollisions() {
 void PlanetSimulation::MergeBodies(std::size_t a, std::size_t b) {
   CORE_ASSERT(a < m_Planets.size() && b < m_Planets.size(), "out of bounds");
 
-  const float massA = m_Planets.masses[a], massB = m_Planets.masses[b],
-              totalMass = massA + massB;
+  const float massA = m_Planets.masses[a], massB = m_Planets.masses[b], totalMass = massA + massB;
 
-  m_Planets.positions[a] =
-      (m_Planets.positions[a] * massA + m_Planets.positions[b] * massB) /
-      totalMass;
+  m_Planets.positions[a] = (m_Planets.positions[a] * massA + m_Planets.positions[b] * massB) / totalMass;
 
-  m_Planets.velocities[a] =
-      (m_Planets.velocities[a] * massA + m_Planets.velocities[b] * massB) /
-      totalMass;
+  m_Planets.velocities[a] = (m_Planets.velocities[a] * massA + m_Planets.velocities[b] * massB) / totalMass;
 
   m_Planets.masses[a] = totalMass;
 
   // Area ∝ r², so use area-preserving
   // radius combination.
-  m_Planets.radii[a] = std::sqrt(m_Planets.radii[a] * m_Planets.radii[a] +
-                                 m_Planets.radii[b] * m_Planets.radii[b]);
+  m_Planets.radii[a] = std::sqrt(m_Planets.radii[a] * m_Planets.radii[a] + m_Planets.radii[b] * m_Planets.radii[b]);
 
   m_Planets.erase(b);
 }

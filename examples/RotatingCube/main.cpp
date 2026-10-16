@@ -10,13 +10,16 @@
 #include <glm/ext/matrix_transform.hpp>
 
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <exception>
 #include <string_view>
 
 using namespace Jupiter;
 
 class MyApp final : public Application {
 public:
-  explicit MyApp(bool smokeTest = false) : m_SmokeTest(smokeTest) {}
+  MyApp() noexcept = default;
 
   void OnRenderInit() override {
     GetGraphicsContext().SetVSync(Rendering::RHI::VSyncMode::Off);
@@ -110,9 +113,6 @@ public:
     Rendering::Renderer::Submit(
         Rendering::RHI::RenderCommand{mesh, material, model});
     Rendering::Renderer::EndFrame();
-
-    if (m_SmokeTest && ++m_FrameCount >= 120)
-      Close();
   }
 
 private:
@@ -121,14 +121,17 @@ private:
   Assets::AssetHandle<Rendering::Material> materialHandle;
 
   float m_Time{0.0f};
-  u32 m_FrameCount{0};
-  bool m_SmokeTest{false};
 };
 
-int main(int argc, char **argv) {
-  const bool smokeTest =
-      argc == 2 && std::string_view(argv[1]) == "--smoke-test";
-
-  MyApp app{smokeTest};
-  app.Run();
+int main() {
+  try {
+    MyApp app;
+    app.Run();
+    return EXIT_SUCCESS;
+  } catch (const std::exception &error) {
+    std::fprintf(stderr, "JupiterExample failed: %s\n", error.what());
+  } catch (...) {
+    std::fputs("JupiterExample failed: unknown exception\n", stderr);
+  }
+  return EXIT_FAILURE;
 }

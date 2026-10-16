@@ -22,13 +22,9 @@ public:
   Font(Font &&) noexcept = default;
   Font &operator=(Font &&) noexcept = default;
 
-  [[nodiscard]] const RHI::IFont::Glyph &GetGlyph(unsigned char c) const {
-    return m_Impl->GetGlyph(c);
-  }
+  [[nodiscard]] const RHI::IFont::Glyph &GetGlyph(unsigned char c) const { return m_Impl->GetGlyph(c); }
 
-  [[nodiscard]] std::span<const std::byte> GetAtlasPixels() const {
-    return m_Impl->GetAtlasPixels();
-  }
+  [[nodiscard]] std::span<const std::byte> GetAtlasPixels() const { return m_Impl->GetAtlasPixels(); }
 
   [[nodiscard]] u32 GetAtlasWidth() const { return m_Impl->GetAtlasWidth(); }
   [[nodiscard]] u32 GetAtlasHeight() const { return m_Impl->GetAtlasHeight(); }

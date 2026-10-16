@@ -19,15 +19,10 @@ public:
   Mesh(Mesh &&) noexcept = default;
   Mesh &operator=(Mesh &&) noexcept = default;
 
-  [[nodiscard]] u32 GetVertexCount() const noexcept {
-    return m_Impl->GetVertexCount();
-  }
-  [[nodiscard]] u32 GetIndexCount() const noexcept {
-    return m_Impl->GetIndexCount();
-  }
-
-  RHI::IMesh &GetImpl() noexcept { return *m_Impl; }
-  const RHI::IMesh &GetImpl() const noexcept { return *m_Impl; }
+  [[nodiscard]] u32 GetVertexCount() const noexcept { return m_Impl->GetVertexCount(); }
+  [[nodiscard]] u32 GetVertexCapacity() const noexcept { return m_Impl->GetVertexCapacity(); }
+  [[nodiscard]] u32 GetIndexCount() const noexcept { return m_Impl->GetIndexCount(); }
+  [[nodiscard]] u32 GetIndexCapacity() const noexcept { return m_Impl->GetIndexCapacity(); }
 
 private:
   Scope<RHI::IMesh> m_Impl;
