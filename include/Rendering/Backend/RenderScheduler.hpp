@@ -44,15 +44,19 @@ public:
 private:
   static constexpr std::size_t k_MaxFramesInFlight = 2;
   static constexpr std::size_t k_MaxPendingTasks = 4096;
+
   FrameQueue m_Frames;
   RendererCommandQueue m_Commands;
+
   Frame m_Build;
+  std::thread::id m_FrameProducer{};
+
   std::array<Frame, k_MaxFramesInFlight + 1> m_Recycled;
   std::size_t m_RecycledCount{};
+
   bool m_Building{}, m_Publishing{}, m_Stopping{true};
-  std::thread::id m_FrameProducer{};
-  std::uint64_t m_NextTicket{};
-  std::uint64_t m_Epoch{};
+  std::uint64_t m_NextTicket{}, m_Epoch{};
+
   std::mutex m_Mutex;
   std::condition_variable m_WorkCV, m_FrameCV;
 };

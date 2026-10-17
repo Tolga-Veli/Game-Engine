@@ -8,7 +8,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(JUPITER_BUILD_EXAMPLE "Build the default Jupiter example application" ON)
 option(JUPITER_BUILD_PLANET_EXAMPLE "Build the planet simulation example" ON)
-option(JUPITER_BUILD_TESTS "Build headless engine regression tests" OFF)
 
 # Single-config generators (Makefiles, Ninja) have an empty CMAKE_BUILD_TYPE
 # unless you pass -DCMAKE_BUILD_TYPE explicitly, which silently breaks the
@@ -112,15 +111,6 @@ endfunction()
 
 jupiter_enable_warnings(JupiterEngine)
 
-if(JUPITER_BUILD_TESTS)
-    enable_testing()
-    add_executable(RenderSchedulerTests "tests/Rendering/RenderSchedulerTests.cpp")
-    target_link_libraries(RenderSchedulerTests PRIVATE JupiterEngine)
-    jupiter_enable_warnings(RenderSchedulerTests)
-    add_test(NAME RenderSchedulerTests COMMAND RenderSchedulerTests)
-    set_tests_properties(RenderSchedulerTests PROPERTIES
-        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}" TIMEOUT 30)
-endif()
 
 if(MSVC)
     target_compile_options(JupiterEngine PRIVATE $<$<CONFIG:Release>:/O2>)

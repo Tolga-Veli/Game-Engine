@@ -53,6 +53,7 @@ bool RenderScheduler::BeginFrame(const SceneData &sceneData) {
   m_FrameProducer = std::this_thread::get_id();
   if (m_RecycledCount)
     m_Build = std::move(m_Recycled[--m_RecycledCount]);
+
   m_Build.sceneData = sceneData;
   m_Building = true;
   return true;
@@ -92,10 +93,10 @@ bool RenderScheduler::EndFrame() {
   sealed = std::move(m_Build);
   m_Building = false;
   m_Publishing = true;
+
   const auto epoch = m_Epoch;
-  m_FrameCV.wait(lock, [this, epoch] {
-    return m_Stopping || epoch != m_Epoch || m_Frames.outstanding < k_MaxFramesInFlight;
-  });
+  m_FrameCV.wait(
+      lock, [this, epoch] { return m_Stopping || epoch != m_Epoch || m_Frames.outstanding < k_MaxFramesInFlight; });
 
   if (m_Stopping || epoch != m_Epoch) {
     m_Publishing = false;
@@ -109,6 +110,7 @@ bool RenderScheduler::EndFrame() {
     m_Publishing = false;
     throw;
   }
+
   ++m_Frames.outstanding;
   m_Publishing = false;
   lock.unlock();
@@ -119,9 +121,9 @@ bool RenderScheduler::EndFrame() {
 bool RenderScheduler::CommitFrame(Frame frame) {
   std::unique_lock lock(m_Mutex);
   const auto epoch = m_Epoch;
-  m_FrameCV.wait(lock, [this, epoch] {
-    return m_Stopping || epoch != m_Epoch || m_Frames.outstanding < k_MaxFramesInFlight;
-  });
+  m_FrameCV.wait(
+      lock, [this, epoch] { return m_Stopping || epoch != m_Epoch || m_Frames.outstanding < k_MaxFramesInFlight; });
+
   if (m_Stopping || epoch != m_Epoch)
     return false;
 
@@ -144,6 +146,7 @@ bool RenderScheduler::Enqueue(RenderTask task) {
     std::scoped_lock lock(m_Mutex);
     if (m_Stopping || m_Commands.ready.size() >= k_MaxPendingTasks)
       return false;
+
     auto &entry = m_Commands.ready.emplace_back();
     entry.ticket = m_NextTicket++;
     entry.task = std::move(owned);
@@ -158,6 +161,7 @@ bool RenderScheduler::WaitNext(Work &work) {
   work = {};
   std::unique_ptr<RenderTask> task;
   std::unique_lock lock(m_Mutex);
+
   m_WorkCV.wait(lock, [this] { return m_Stopping || !m_Frames.ready.empty() || !m_Commands.ready.empty(); });
   if (m_Stopping)
     return false;
@@ -172,9 +176,11 @@ bool RenderScheduler::WaitNext(Work &work) {
     task = std::move(m_Commands.ready.front().task);
     m_Commands.ready.pop_front();
   }
+
   lock.unlock();
   if (task)
     work.task = std::move(*task);
+
   return true;
 }
 
@@ -189,12 +195,14 @@ void RenderScheduler::CompleteFrame() noexcept {
 void RenderScheduler::CompleteFrame(Frame frame) noexcept {
   frame.commands.clear();
   frame.overlays.clear();
+
   {
     std::scoped_lock lock(m_Mutex);
     if (m_RecycledCount < m_Recycled.size())
       m_Recycled[m_RecycledCount++] = std::move(frame);
     --m_Frames.outstanding;
   }
+
   m_FrameCV.notify_all();
 }
 } // namespace Jupiter::Rendering

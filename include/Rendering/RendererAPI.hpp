@@ -32,19 +32,6 @@ public:
   // not retain mutable game-thread state.
   static bool SubmitRenderTask(RenderTask task);
 
-  // The future becomes ready after render-thread CPU execution. If the task
-  // is rejected or cancelled, it reports broken_promise; task exceptions are
-  // delivered through the future.
-  template <class Fn> static auto SubmitRenderTaskAsync(Fn &&function)
-      -> std::pair<bool, std::future<std::invoke_result_t<Fn &, RenderExecutionContext &>>> {
-    using Result = std::invoke_result_t<Fn &, RenderExecutionContext &>;
-    std::packaged_task<Result(RenderExecutionContext &)> packaged(std::forward<Fn>(function));
-    auto future = packaged.get_future();
-    const bool accepted =
-        SubmitRenderTask([task = std::move(packaged)](RenderExecutionContext &context) mutable { task(context); });
-    return {accepted, std::move(future)};
-  }
-
   // ===================================
   // Render thread API.
   // ===================================
